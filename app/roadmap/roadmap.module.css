@@ -1,0 +1,269 @@
+.page {
+  min-height: 100vh;
+  background: var(--bg);
+  padding-bottom: 5rem;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid var(--border);
+  gap: 1rem;
+}
+
+.logo {
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 3rem 2rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3.5rem;
+}
+
+.topSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.brandHeading {
+  font-family: var(--font-heading);
+  font-size: 1.75rem;
+  font-weight: 800;
+}
+
+.subtext {
+  color: var(--text-muted);
+  font-size: 1rem;
+}
+
+/* ── Sections ── */
+.section { display: flex; flex-direction: column; gap: 1.25rem; }
+
+.sectionHeader { display: flex; flex-direction: column; gap: 0.25rem; }
+
+.sectionTitle {
+  font-family: var(--font-heading);
+  font-size: 1.375rem;
+  font-weight: 800;
+}
+
+.sectionTheme {
+  color: var(--accent);
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+
+/* ── Week cards ── */
+.weekCards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.weekCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+}
+
+.weekBadge {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border: 1px solid rgba(255,77,28,0.3);
+  border-radius: 8px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.weekContent { display: flex; flex-direction: column; gap: 0.35rem; }
+
+.weekTask {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--text);
+}
+
+.weekWhy {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+/* ── Timeline ── */
+.timeline {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  position: relative;
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  top: 28px;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background: var(--border);
+}
+
+.monthNode {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding-top: 0.5rem;
+  position: relative;
+  z-index: 1;
+}
+
+.monthDot {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 0.875rem;
+  color: white;
+  flex-shrink: 0;
+}
+
+.monthContent {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0 0.5rem;
+}
+
+.monthGoal {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+
+.monthHow {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ── Objectives ── */
+.objectives {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.objective {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+.objNumber {
+  font-family: var(--font-heading);
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--border);
+  line-height: 1;
+  flex-shrink: 0;
+  min-width: 2.5rem;
+}
+
+.objText {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--text);
+  padding-top: 0.25rem;
+}
+
+/* ── Bigger Picture ── */
+.biggerPicture {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.vision {
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--text);
+}
+
+.marketPos {
+  font-size: 1rem;
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+/* ── Download ── */
+.downloadBtn {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.875rem 2rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  font-family: var(--font-body);
+  align-self: center;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.downloadBtn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+@media print {
+  .header, .downloadBtn { display: none; }
+  .page { background: white; color: black; }
+  .section { page-break-inside: avoid; }
+  .weekCard, .objective, .biggerPicture {
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+  }
+  .sectionTitle, .brandHeading, .vision { color: black; }
+  .sectionTheme, .weekWhy, .monthHow, .subtext, .objText, .marketPos { color: #555; }
+  .weekBadge { background: #eee; color: #333; border-color: #ccc; }
+  .monthDot { background: #FF4D1C; }
+  .timeline::before { background: #ddd; }
+}
+
+@media (max-width: 640px) {
+  .timeline { grid-template-columns: 1fr 1fr; gap: 1.5rem 0; }
+  .timeline::before { display: none; }
+}

@@ -1,0 +1,54 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #0A0A0B;
+  --surface: #111113;
+  --surface2: #1A1A1D;
+  --border: #2A2A2E;
+  --accent: #FF4D1C;
+  --accent-dim: rgba(255, 77, 28, 0.15);
+  --text: #F0F0F0;
+  --text-muted: #888;
+  --text-dim: #555;
+  --green: #22C55E;
+  --amber: #F59E0B;
+  --red: #EF4444;
+  --font-heading: var(--font-syne), sans-serif;
+  --font-body: var(--font-dm-sans), sans-serif;
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  line-height: 1.2;
+}
+
+a { color: inherit; text-decoration: none; }
+
+button {
+  font-family: var(--font-body);
+  cursor: pointer;
+}
+
+input, select, textarea {
+  font-family: var(--font-body);
+}
+
+/* Print styles for roadmap */
+@media print {
+  body { background: white; color: black; }
+  nav, .no-print { display: none !important; }
+  .print-clean { page-break-inside: avoid; }
+}

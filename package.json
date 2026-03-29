@@ -1,0 +1,21 @@
+{
+  "name": "brandshift",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.80.0",
+    "@mendable/firecrawl-js": "^4.18.0",
+    "apify-client": "^2.22.3",
+    "next": "14.2.29",
+    "proxy-agent": "^7.0.0",
+    "react": "^18",
+    "react-dom": "^18",
+    "undici": "^7.24.6"
+  }
+}
