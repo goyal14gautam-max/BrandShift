@@ -1,19 +1,19 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import styles from './results.module.css';
 
-const DIM_LABELS = {
-  visual_identity:        'Visual Identity',
-  tone_voice:             'Tone & Voice',
-  trend_relevance:        'Trend Relevance',
-  competitor_positioning: 'Competitor Positioning',
-  audience_alignment:     'Audience Alignment',
+const DIM_META = {
+  visual_identity:        { label: 'Visual Identity',        weight: 25 },
+  tone_voice:             { label: 'Tone & Voice',           weight: 25 },
+  trend_relevance:        { label: 'Trend Relevance',        weight: 20 },
+  competitor_positioning: { label: 'Competitor Positioning', weight: 20 },
+  audience_alignment:     { label: 'Audience Alignment',     weight: 10 },
 };
 
 function scoreColor(s) {
-  if (s < 45) return 'var(--red)';
+  if (s < 40) return 'var(--red)';
   if (s <= 65) return 'var(--amber)';
   return 'var(--green)';
 }
@@ -86,6 +86,7 @@ export default function Results() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           brandName:      brand?.brandName || '',
+          industry:       brand?.industry || '',
           scoreData:      score,
           direction,
           toneDirection:  toneDir,
@@ -135,19 +136,40 @@ export default function Results() {
         <div className={styles.scoreSection}>
           <AnimatedRing score={score.overall_score} />
           <p className={styles.verdict}>{score.verdict}</p>
-          <span className={`${styles.urgencyBadge} ${urgencyClass}`}>
-            Rebrand Urgency: {score.rebrand_urgency?.toUpperCase()}
-          </span>
+          <div className={styles.badgeRow}>
+            <span className={`${styles.urgencyBadge} ${urgencyClass}`}>
+              Rebrand Urgency: {score.rebrand_urgency?.toUpperCase()}
+            </span>
+            {score.data_confidence && (
+              <span className={`${styles.urgencyBadge} ${styles['confidence' + score.data_confidence.charAt(0).toUpperCase() + score.data_confidence.slice(1)]}`}>
+                Data: {score.data_confidence.toUpperCase()} CONFIDENCE
+              </span>
+            )}
+          </div>
+          {score.sources_available && (
+            <div className={styles.sourcesRow}>
+              {Object.entries(score.sources_available).map(([src, available]) => (
+                <span key={src} className={`${styles.sourceChip} ${available ? styles.sourceOn : styles.sourceOff}`}>
+                  {available ? '✓' : '✗'} {src}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Dimension cards */}
         <div>
           <h2 className={styles.sectionTitle}>Dimension Breakdown</h2>
           <div className={styles.dimensionGrid}>
-            {Object.entries(score.dimensions || {}).map(([key, dim]) => (
+            {Object.entries(score.dimensions || {}).map(([key, dim]) => {
+              const meta = DIM_META[key] || { label: key.replace(/_/g, ' '), weight: null };
+              return (
               <div key={key} className={styles.dimCard}>
                 <div className={styles.dimHeader}>
-                  <span className={styles.dimName}>{DIM_LABELS[key] || key.replace(/_/g,' ')}</span>
+                  <div className={styles.dimNameRow}>
+                    <span className={styles.dimName}>{meta.label}</span>
+                    {meta.weight && <span className={styles.dimWeight}>{meta.weight}%</span>}
+                  </div>
                   <span className={styles.dimScore} style={{ color: scoreColor(dim.score) }}>
                     {dim.score}
                   </span>
@@ -158,7 +180,8 @@ export default function Results() {
                 </div>
                 <p className={styles.dimJustification}>{dim.justification}</p>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { SCORING_SYSTEM_PROMPT, SCORING_USER_PROMPT } from '@/lib/prompts';
+import { saveAudit } from '@/lib/supabase';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -11,7 +12,7 @@ function fillPrompt(template, data) {
 async function callClaude(prompt) {
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-0',
-    max_tokens: 2000,
+    max_tokens: 3000,
     system: SCORING_SYSTEM_PROMPT,
     messages: [{ role: 'user', content: prompt }],
   });
@@ -68,6 +69,19 @@ export async function POST(request) {
 
   if (!parsed) {
     return NextResponse.json({ error: 'Failed to parse score response' }, { status: 500 });
+  }
+
+  try {
+    await saveAudit({
+      brandName, industry, brandAge, targetAudience, challenge,
+      websiteUrl: body.websiteUrl || '',
+      instagramHandle: body.instagramHandle || '',
+      scraped_homepage, scraped_about, scraped_blog, scraped_instagram,
+      scraped_comp1, scraped_comp2,
+      scoreData: parsed,
+    });
+  } catch (err) {
+    console.error('Supabase save failed:', err.message);
   }
 
   return NextResponse.json(parsed);

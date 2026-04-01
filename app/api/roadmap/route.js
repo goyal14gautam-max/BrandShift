@@ -26,15 +26,16 @@ function extractJSON(text) {
 
 export async function POST(request) {
   const body = await request.json();
-  const { brandName, scoreData, direction, toneDirection, targetAudience, marketFocus } = body;
+  const { brandName, industry, scoreData, direction, toneDirection, targetAudience, marketFocus } = body;
 
   const filledPrompt = fillPrompt(ROADMAP_PROMPT, {
     brand_name:       brandName,
+    industry:         industry || 'Not specified',
     score_json:       JSON.stringify(scoreData, null, 2),
     direction:        direction || 'Not specified',
-    tone_direction:   toneDirection,
-    target_audience:  targetAudience,
-    market_focus:     marketFocus,
+    tone_direction:   toneDirection || 'Not specified',
+    target_audience:  targetAudience || 'Not specified',
+    market_focus:     marketFocus || 'Not specified',
   });
 
   let text = await callClaude(filledPrompt);
