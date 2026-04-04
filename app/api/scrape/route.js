@@ -22,13 +22,20 @@ async function firecrawlScrape(url, options = {}) {
   }
 }
 
-// ── 404 / not-found detection ──────────────────────────────────
-const NOT_FOUND_SIGNALS = ['404', 'page not found', "doesn't exist", 'does not exist', 'made an egg-sit'];
+// ── FIX 1 — Content validation ────────────────────────────────
+function isValidContent(content, minLength = 300) {
+  if (!content || content.length < minLength) return false;
+  const lower = content.toLowerCase();
+  const invalidSignals = [
+    'page not found', '404', 'we are sorry but this page',
+    'this page does not exist', 'page cannot be found',
+    "doesn't exist", 'no longer available', 'made an egg-sit',
+  ];
+  return !invalidSignals.some(sig => lower.includes(sig));
+}
 
 function isRealContent(content, homepagePrefix = '') {
-  if (!content || content.length < 500) return false;
-  const lower = content.toLowerCase();
-  if (NOT_FOUND_SIGNALS.some(sig => lower.slice(0, 500).includes(sig))) return false;
+  if (!isValidContent(content, 500)) return false;
   if (homepagePrefix && content.slice(0, 200).trim() === homepagePrefix) return false;
   return true;
 }
@@ -50,7 +57,7 @@ async function scrapeAbout(base, homepageContent) {
   return '';
 }
 
-// ── Blog (waitFor JS rendering) ────────────────────────────────
+// ── Blog (FIX 1: validate each attempt) ───────────────────────
 async function scrapeBlog(base) {
   const urls = [
     base + '/blogs',
@@ -61,9 +68,24 @@ async function scrapeBlog(base) {
   ];
   for (const url of urls) {
     const content = await firecrawlScrape(url, { waitFor: 2000 });
-    if (content && content.length > 300) return content;
+    if (isValidContent(content)) return content;
   }
+  console.log('Blog: no valid content found for this brand');
   return '';
+}
+
+// ── FIX 2 — Homepage (fallback if onlyMainContent too sparse) ──
+async function scrapeHomepage(url) {
+  const main = await firecrawlScrape(url, { onlyMainContent: true });
+  if (main && main.length >= 500) {
+    console.log('Homepage scrape method: onlyMainContent');
+    return main;
+  }
+  // Too sparse — try without onlyMainContent
+  const full = await firecrawlScrape(url, { onlyMainContent: false });
+  const result = (full && full.length > (main || '').length) ? full : (main || '');
+  console.log('Homepage scrape method: full page');
+  return result;
 }
 
 // ── Instagram via Apify REST API (Fix 2) ──────────────────────
@@ -197,7 +219,7 @@ export async function POST(request) {
   // ── Homepage ──────────────────────────────────────────────────
   let scrapedHomepage = '';
   try {
-    scrapedHomepage = await firecrawlScrape(base);
+    scrapedHomepage = await scrapeHomepage(base);
   } catch (err) {
     console.error('Homepage scrape failed:', err.message);
   }
