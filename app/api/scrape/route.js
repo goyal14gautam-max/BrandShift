@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { FirecrawlApp } from '@mendable/firecrawl-js';
+import { FirecrawlAppV1 as FirecrawlApp } from '@mendable/firecrawl-js';
 import Anthropic from '@anthropic-ai/sdk';
 import { cleanMarkdown } from '@/lib/cleaner';
 
