@@ -21,21 +21,24 @@ const STEPS = [
   },
 ];
 
-const DIMENSIONS = [
-  { label: 'Visual Identity',        color: 'var(--bs-violet)', pct: 25 },
-  { label: 'Tone & Voice',           color: 'var(--bs-orange)', pct: 25 },
-  { label: 'Trend Relevance',        color: 'var(--bs-teal)',   pct: 20 },
-  { label: 'Competitor Positioning', color: 'var(--bs-amber)',  pct: 20 },
-  { label: 'Audience Alignment',     color: 'var(--bs-violet)', pct: 10 },
+const WHAT_YOU_GET = [
+  'Brand Relevance Score across 6 dimensions',
+  'Evidence pulled from your actual website and social content',
+  'Competitor gap analysis and positioning',
+  '8-week execution roadmap with weekly tasks',
+  'Stakeholder-ready PDF report',
+  'Weekly score tracking and Monday brief',
 ];
 
-const STATS = [
-  { value: '5', label: 'Brand dimensions scored' },
-  { value: '< 2m', label: 'Time to full audit' },
-  { value: '100%', label: 'AI-powered analysis' },
+const SAMPLE_DIMS = [
+  { label: 'Visual Identity',        color: 'var(--bs-violet)', score: 74 },
+  { label: 'Brand Voice',            color: 'var(--bs-orange)', score: 61 },
+  { label: 'Trend Adherence',        color: 'var(--bs-teal)',   score: 71 },
+  { label: 'Competitive Position',   color: 'var(--bs-amber)',  score: 58 },
+  { label: 'Social Performance',     color: 'var(--bs-violet)', score: 69 },
 ];
 
-export default function HomeV2() {
+export default function Home() {
   const router = useRouter();
 
   return (
@@ -68,16 +71,6 @@ export default function HomeV2() {
         </div>
       </section>
 
-      {/* ── Stats ── */}
-      <section className={styles.statsRow}>
-        {STATS.map(s => (
-          <div key={s.label} className={styles.stat}>
-            <span className={styles.statValue}>{s.value}</span>
-            <span className={styles.statLabel}>{s.label}</span>
-          </div>
-        ))}
-      </section>
-
       {/* ── Score preview ── */}
       <section className={styles.previewSection}>
         <div className={styles.sectionLabel}>What you get</div>
@@ -90,29 +83,28 @@ export default function HomeV2() {
         <div className={styles.previewCard}>
           <div className={styles.previewHeader}>
             <div>
-              <p className={styles.previewBrand}>Mamaearth <span className={styles.previewIndustry}>D2C / Health & Wellness</span></p>
+              <p className={styles.previewBrand}>
+                BrandShift <span className={styles.previewIndustry}>D2C / SaaS</span>
+              </p>
               <p className={styles.previewMeta}>Sample audit — 5 dimensions analysed</p>
             </div>
             <div className={styles.scoreRing}>
               <svg viewBox="0 0 100 100" width="80" height="80">
                 <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="8" />
                 <circle cx="50" cy="50" r="40" fill="none" stroke="var(--bs-teal)" strokeWidth="8"
-                  strokeDasharray="251" strokeDashoffset="63"
+                  strokeDasharray="251" strokeDashoffset="82"
                   transform="rotate(-90 50 50)" strokeLinecap="round" />
               </svg>
-              <span className={styles.scoreNum}>75</span>
+              <span className={styles.scoreNum}>67</span>
             </div>
           </div>
 
           <div className={styles.dimList}>
-            {DIMENSIONS.map(d => (
+            {SAMPLE_DIMS.map(d => (
               <div key={d.label} className={styles.dimRow}>
                 <span className={styles.dimLabel}>{d.label}</span>
                 <div className={styles.dimBar}>
-                  <div className={styles.dimFill} style={{
-                    width: `${60 + Math.random() * 30}%`,
-                    background: d.color,
-                  }} />
+                  <div className={styles.dimFill} style={{ width: `${d.score}%`, background: d.color }} />
                 </div>
               </div>
             ))}
@@ -120,23 +112,40 @@ export default function HomeV2() {
         </div>
       </section>
 
-      {/* ── How it works ── */}
-      <section className={styles.howSection}>
-        <div className={styles.sectionLabel}>How it works</div>
-        <h2 className={styles.sectionHeading}>From input to insight in minutes</h2>
+      {/* ── How it works + What you get (parallel) ── */}
+      <section className={styles.parallelSection}>
 
-        <div className={styles.steps}>
-          {STEPS.map((s, i) => (
-            <div key={s.num} className={styles.step}>
-              <div className={styles.stepNum}>{s.num}</div>
-              <div className={styles.stepBody}>
-                <h3 className={styles.stepTitle}>{s.title}</h3>
-                <p className={styles.stepText}>{s.body}</p>
+        {/* Left — How it works */}
+        <div className={styles.parallelCol}>
+          <p className={styles.parallelLabel}>PROCESS</p>
+          <h2 className={styles.parallelHeading}>How it works</h2>
+          <div className={styles.stepsList}>
+            {STEPS.map(s => (
+              <div key={s.num} className={styles.stepRow}>
+                <span className={styles.stepNum}>{s.num}</span>
+                <div>
+                  <p className={styles.stepTitle}>{s.title}</p>
+                  <p className={styles.stepText}>{s.body}</p>
+                </div>
               </div>
-              {i < STEPS.length - 1 && <div className={styles.stepConnector} />}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
+
+        {/* Right — What you get */}
+        <div className={styles.parallelCol}>
+          <p className={styles.parallelLabel}>OUTPUT</p>
+          <h2 className={styles.parallelHeading}>What you get</h2>
+          <div className={styles.getList}>
+            {WHAT_YOU_GET.map(item => (
+              <div key={item} className={styles.getRow}>
+                <span className={styles.getBullet} />
+                <p className={styles.getItem}>{item}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
       </section>
 
       {/* ── For Indian brands ── */}

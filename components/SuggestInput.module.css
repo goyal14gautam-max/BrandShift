@@ -1,0 +1,35 @@
+.wrap {
+  position: relative;
+  width: 100%;
+}
+
+.dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bs-card-light);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius);
+  z-index: 50;
+  margin-top: 4px;
+  overflow: hidden;
+}
+
+.item {
+  padding: 10px 16px;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: var(--bs-text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--bs-text-primary);
+}
+
+.inputError {
+  border-color: var(--destructive) !important;
+}

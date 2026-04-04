@@ -1,92 +1,270 @@
+/* ── BrandShift Loading Page ────────────────────────────────── */
+
 .page {
   min-height: 100vh;
   background: var(--bs-base);
+  display: flex;
+  flex-direction: row;
+}
+
+/* ── Left — Main Area ───────────────────────────────────────── */
+.mainArea {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 40px;
+  gap: 32px;
+}
+
+.heading {
+  font-family: var(--font-ui);
+  font-size: 18px;
+  color: var(--bs-text-secondary);
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+/* ── Terminal Card ──────────────────────────────────────────── */
+.terminal {
+  background: var(--bs-card-dark);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius);
+  padding: 32px 36px;
+  width: 500px;
+  max-width: 90vw;
+}
+
+.stepRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.stepRow:last-child {
+  margin-bottom: 0;
+}
+
+.iconWrap {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
-  text-align: center;
-  padding: 40px;
+.iconDone {
+  color: var(--bs-teal);
+  width: 16px;
+  height: 16px;
 }
 
-.spinner {
-  width: 48px;
-  height: 48px;
-  border: 2px solid rgba(255, 255, 255, 0.08);
-  border-top-color: var(--bs-orange);
+.iconSpinning {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--bs-violet);
+  border-top-color: transparent;
   border-radius: 50%;
-  animation: spin 0.9s linear infinite;
+  animation: spin 0.8s linear infinite;
+}
+
+.iconPending {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-radius: 50%;
 }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
 
-.msg {
-  font-family: var(--font-headline);
-  font-size: 22px;
-  font-weight: 400;
-  color: var(--bs-text-primary);
-}
-
-.dots {
-  display: flex;
-  gap: 6px;
-}
-
-.dots span {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--bs-orange);
-  animation: pulse 1.4s infinite ease-in-out;
-}
-
-.dots span:nth-child(2) { animation-delay: 0.2s; }
-.dots span:nth-child(3) { animation-delay: 0.4s; }
-
-@keyframes pulse {
-  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
-  40%           { opacity: 1;   transform: scale(1); }
-}
-
-.elapsed {
+.stepText {
   font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.state_done    { color: var(--bs-text-secondary); }
+.state_active  { color: var(--bs-text-primary); }
+.state_pending { color: var(--bs-text-tertiary); }
+
+.cursor {
+  animation: blink 1s step-end infinite;
+  margin-left: 1px;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+/* ── Progress Bar ───────────────────────────────────────────── */
+.progressWrap {
+  width: 500px;
+  max-width: 90vw;
+}
+
+.progressHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.progressLabel {
+  font-family: var(--font-ui);
   font-size: 13px;
   color: var(--bs-text-tertiary);
 }
 
-.errorMsg {
-  font-family: var(--font-ui);
-  font-size: 14px;
-  color: var(--destructive);
-  background: rgba(212, 24, 61, 0.08);
-  border: 1px solid rgba(212, 24, 61, 0.2);
+.progressPct {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--bs-text-secondary);
+}
+
+.progressTrack {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(to right, var(--bs-violet), var(--bs-orange), var(--bs-teal));
+  transition: width 0.5s ease;
+}
+
+/* ── Right — Activity Feed ──────────────────────────────────── */
+.feed {
+  position: fixed;
+  right: 0;
+  top: 0;
+  width: 280px;
+  height: 100vh;
+  padding: 80px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  justify-content: center;
+}
+
+.feedCard {
+  background: var(--bs-card-dark);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius);
-  padding: 16px 20px;
-  max-width: 480px;
+  padding: 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  opacity: 0;
+  transform: translateX(20px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.feedCardVisible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
+  margin-top: 2px;
+  transition: background 0.3s, box-shadow 0.3s;
+}
+
+.dotActive {
+  background: var(--bs-teal);
+  box-shadow: 0 0 8px rgba(46, 196, 160, 0.5);
+}
+
+.feedTitle {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--bs-text-primary);
+}
+
+.feedSub {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--bs-text-tertiary);
+  margin-top: 3px;
+}
+
+/* ── Error State ────────────────────────────────────────────── */
+.errorState {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  text-align: center;
+  padding: 60px 40px;
+}
+
+.errorIcon {
+  color: var(--bs-orange);
+}
+
+.errorHeading {
+  font-family: var(--font-headline);
+  font-size: 24px;
+  font-weight: 400;
+  color: var(--bs-text-primary);
+}
+
+.errorSub {
+  font-family: var(--font-ui);
+  font-size: 15px;
+  color: var(--bs-text-secondary);
   line-height: 1.6;
+  max-width: 360px;
 }
 
 .retryBtn {
-  background: none;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--bs-orange);
+  color: white;
+  border: none;
   border-radius: var(--radius);
-  padding: 10px 24px;
+  padding: 12px 28px;
   font-family: var(--font-ui);
-  font-size: 14px;
-  color: var(--bs-text-secondary);
+  font-size: 15px;
+  font-weight: 500;
   cursor: pointer;
-  transition: color 0.2s, border-color 0.2s;
+  margin-top: 8px;
+  transition: opacity 0.2s;
 }
 
-.retryBtn:hover {
-  color: var(--bs-text-primary);
-  border-color: rgba(255, 255, 255, 0.3);
+.retryBtn:hover { opacity: 0.88; }
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .page { flex-direction: column; }
+
+  .mainArea {
+    padding: 60px 20px 32px;
+    min-height: 70vh;
+  }
+
+  .feed {
+    position: static;
+    width: 100%;
+    height: auto;
+    padding: 0 20px 40px;
+    justify-content: flex-start;
+  }
 }

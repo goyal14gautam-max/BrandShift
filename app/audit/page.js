@@ -5,7 +5,26 @@ import { useRouter } from 'next/navigation';
 import {
   Sparkles, Globe, Users, Target, ArrowRight, ChevronLeft,
 } from 'lucide-react';
+import SuggestInput from '@/components/SuggestInput';
 import styles from './audit.module.css';
+
+const INDUSTRY_SUGGESTIONS = [
+  'D2C / Consumer Brand', 'FMCG / Food & Beverage', 'Fashion & Lifestyle',
+  'Health & Wellness', 'Tech / SaaS', 'Beauty & Personal Care', 'EdTech',
+  'FinTech', 'Real Estate', 'Hospitality & Travel', 'Healthcare', 'Retail',
+  'Food & Beverage', 'Apparel & Footwear', 'Home & Living', 'Sports & Fitness',
+  'Media & Entertainment', 'Automotive', 'B2B / Enterprise',
+  'Regional / Family Business',
+];
+
+const AUDIENCE_SUGGESTIONS = [
+  'Gen Z (18–25)', 'Millennials (26–35)', 'Working Professionals (25–40)',
+  'College Students', 'Young Mothers', 'Urban Indians',
+  'Tier 2 & 3 City Consumers', 'Premium / Luxury Segment',
+  'B2B Decision Makers', 'Small Business Owners', 'Health-Conscious Consumers',
+  'Tech-Savvy Users', 'Regional Language Audience', 'High Net Worth Individuals',
+  'First-Time Buyers', 'Mixed Age Groups (25–45)',
+];
 
 const INITIAL_FORM = {
   brandName: '',
@@ -157,7 +176,7 @@ export default function Audit() {
       submittedAt: new Date().toISOString(),
     }));
     localStorage.setItem('brandshift_active_brand', formData.brandName);
-    router.push('/loading');
+    router.replace('/loading');
   }
 
   const progress = currentStep * 20;
@@ -183,21 +202,23 @@ export default function Audit() {
               />
             </Field>
             <Field label="Industry" error={errors.industry}>
-              <input
+              <SuggestInput
                 className={`${styles.fieldInput} ${errors.industry ? styles.inputError : ''}`}
-                type="text"
                 placeholder="e.g., D2C Fashion, SaaS, FMCG"
                 value={formData.industry}
-                onChange={e => setField('industry', e.target.value)}
+                onChange={v => setField('industry', v)}
+                suggestions={INDUSTRY_SUGGESTIONS}
+                hasError={!!errors.industry}
               />
             </Field>
             <Field label="Target Audience" error={errors.targetAudience}>
-              <input
+              <SuggestInput
                 className={`${styles.fieldInput} ${errors.targetAudience ? styles.inputError : ''}`}
-                type="text"
                 placeholder="e.g., Millennials, B2B Tech Leaders"
                 value={formData.targetAudience}
-                onChange={e => setField('targetAudience', e.target.value)}
+                onChange={v => setField('targetAudience', v)}
+                suggestions={AUDIENCE_SUGGESTIONS}
+                hasError={!!errors.targetAudience}
               />
             </Field>
           </>
