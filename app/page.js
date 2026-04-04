@@ -1,239 +1,178 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import styles from './page.module.css';
 
-const LOADING_STEPS = [
-  { msg: 'Scraping your website…',              until: 20 },
-  { msg: 'Analysing competitor positioning…',   until: 40 },
-  { msg: 'Pulling Instagram data…',             until: 80 },
-  { msg: 'Generating your Brand Score…',        until: Infinity },
+const STEPS = [
+  {
+    num: '01',
+    title: 'Tell us about your brand',
+    body: 'Share your website, Instagram handle, and two competitors. Takes 2 minutes.',
+  },
+  {
+    num: '02',
+    title: 'AI analyses everything',
+    body: 'We scrape your site, pull social data, and benchmark against your competitors in real time.',
+  },
+  {
+    num: '03',
+    title: 'Get your Brand Score',
+    body: 'A detailed audit across 5 dimensions — with a prioritised action list tailored to your brand.',
+  },
 ];
 
-export default function Home() {
+const DIMENSIONS = [
+  { label: 'Visual Identity',        color: 'var(--bs-violet)', pct: 25 },
+  { label: 'Tone & Voice',           color: 'var(--bs-orange)', pct: 25 },
+  { label: 'Trend Relevance',        color: 'var(--bs-teal)',   pct: 20 },
+  { label: 'Competitor Positioning', color: 'var(--bs-amber)',  pct: 20 },
+  { label: 'Audience Alignment',     color: 'var(--bs-violet)', pct: 10 },
+];
+
+const STATS = [
+  { value: '5', label: 'Brand dimensions scored' },
+  { value: '< 2m', label: 'Time to full audit' },
+  { value: '100%', label: 'AI-powered analysis' },
+];
+
+export default function HomeV2() {
   const router = useRouter();
-  const [form, setForm] = useState({
-    brandName: '', industry: '', brandAge: '', targetAudience: '',
-    websiteUrl: '', instagramHandle: '',
-    comp1Name: '', comp1Url: '', comp2Name: '', comp2Url: '',
-    challenge: '',
-  });
-  const [loading, setLoading] = useState(false);
-  const [error, setError]   = useState('');
-  const [elapsed, setElapsed] = useState(0);
-  const timerRef = useRef(null);
-
-  useEffect(() => {
-    if (loading) {
-      const start = Date.now();
-      timerRef.current = setInterval(() => {
-        setElapsed(Math.floor((Date.now() - start) / 1000));
-      }, 1000);
-    } else {
-      clearInterval(timerRef.current);
-      setElapsed(0);
-    }
-    return () => clearInterval(timerRef.current);
-  }, [loading]);
-
-  const currentStep = LOADING_STEPS.find(s => elapsed < s.until) || LOADING_STEPS[LOADING_STEPS.length - 1];
-
-  function set(key) {
-    return e => setForm(f => ({ ...f, [key]: e.target.value }));
-  }
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setError('');
-
-    if (!form.brandName.trim()) { setError('Brand name is required.'); return; }
-    if (!form.websiteUrl.trim()) { setError('Website URL is required.'); return; }
-    if (!form.challenge.trim()) { setError('Please describe your biggest challenge.'); return; }
-
-    setLoading(true);
-
-    try {
-      // Step 1: Scrape
-      const scrapeRes = await fetch('/api/scrape', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          brandName:        form.brandName,
-          websiteUrl:       form.websiteUrl,
-          instagramHandle:  form.instagramHandle,
-          comp1Name:        form.comp1Name,
-          comp1Url:         form.comp1Url,
-          comp2Name:        form.comp2Name,
-          comp2Url:         form.comp2Url,
-        }),
-      });
-      const scrapeData = await scrapeRes.json();
-
-      // Step 2: Score
-      const scoreRes = await fetch('/api/score', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          brandName:       form.brandName,
-          industry:        form.industry,
-          brandAge:        form.brandAge,
-          targetAudience:  form.targetAudience,
-          challenge:       form.challenge,
-          comp1Name:       form.comp1Name,
-          comp2Name:       form.comp2Name,
-          ...scrapeData,
-        }),
-      });
-      const scoreData = await scoreRes.json();
-
-      if (scoreData.error) throw new Error(scoreData.error);
-
-      localStorage.setItem('brandshift_score', JSON.stringify(scoreData));
-      localStorage.setItem('brandshift_brand', JSON.stringify(form));
-      router.push('/results');
-    } catch (err) {
-      setError(err.message || 'Something went wrong. Please try again.');
-      setLoading(false);
-    }
-  }
 
   return (
     <div className={styles.page}>
-      {loading && (
-        <div className={styles.overlay}>
-          <div className={styles.overlayIcon} />
-          <p className={styles.overlayMsg}>{currentStep.msg}</p>
-          <div className={styles.overlayDots}>
-            <span className={styles.dot} />
-            <span className={styles.dot} />
-            <span className={styles.dot} />
-          </div>
-          <p className={styles.overlaySub}>{elapsed}s elapsed</p>
-        </div>
-      )}
 
-      <header className={styles.header}>
-        <span className={styles.logo}>BrandShift</span>
+      {/* ── Nav ── */}
+      <header className={styles.nav}>
+        <span className={styles.navLogo}>BrandShift</span>
+        <button className={styles.navCta} onClick={() => router.push('/audit')}>
+          Start Free Audit →
+        </button>
       </header>
 
+      {/* ── Hero ── */}
       <section className={styles.hero}>
+        <div className={styles.heroPill}>AI Brand Intelligence for Indian Brands</div>
         <h1 className={styles.heroHeading}>
-          Know exactly where your <span>brand stands.</span>
+          Know exactly where your<br />
+          <em>brand is losing ground.</em>
         </h1>
         <p className={styles.heroSub}>
           AI analyses your website, social media, and competitors.
-          Then tells you what to fix and in what order.
+          Then tells you what to fix — and in what order.
         </p>
+        <div className={styles.heroActions}>
+          <button className={styles.primaryBtn} onClick={() => router.push('/audit')}>
+            Run Free Brand Audit →
+          </button>
+          <span className={styles.heroNote}>No signup. Results in under 2 minutes.</span>
+        </div>
       </section>
 
-      <div className={styles.formWrapper}>
-        <form className={styles.form} onSubmit={handleSubmit}>
-          {/* Brand basics */}
-          <div className={styles.row}>
-            <div className={styles.field}>
-              <label>Brand Name *</label>
-              <input type="text" value={form.brandName} onChange={set('brandName')}
-                placeholder="e.g. Mamaearth" required />
+      {/* ── Stats ── */}
+      <section className={styles.statsRow}>
+        {STATS.map(s => (
+          <div key={s.label} className={styles.stat}>
+            <span className={styles.statValue}>{s.value}</span>
+            <span className={styles.statLabel}>{s.label}</span>
+          </div>
+        ))}
+      </section>
+
+      {/* ── Score preview ── */}
+      <section className={styles.previewSection}>
+        <div className={styles.sectionLabel}>What you get</div>
+        <h2 className={styles.sectionHeading}>A complete brand audit, not just a score</h2>
+        <p className={styles.sectionSub}>
+          Every dimension is weighted, justified with evidence from your actual online presence,
+          and compared against your competitors.
+        </p>
+
+        <div className={styles.previewCard}>
+          <div className={styles.previewHeader}>
+            <div>
+              <p className={styles.previewBrand}>Mamaearth <span className={styles.previewIndustry}>D2C / Health & Wellness</span></p>
+              <p className={styles.previewMeta}>Sample audit — 5 dimensions analysed</p>
             </div>
-            <div className={styles.field}>
-              <label>Industry</label>
-              <select value={form.industry} onChange={set('industry')}>
-                <option value="">Select industry</option>
-                <option>FMCG/Food &amp; Beverage</option>
-                <option>D2C/Consumer</option>
-                <option>Fashion &amp; Lifestyle</option>
-                <option>Tech/SaaS</option>
-                <option>Health &amp; Wellness</option>
-                <option>Regional/Family Business</option>
-              </select>
+            <div className={styles.scoreRing}>
+              <svg viewBox="0 0 100 100" width="80" height="80">
+                <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="8" />
+                <circle cx="50" cy="50" r="40" fill="none" stroke="var(--bs-teal)" strokeWidth="8"
+                  strokeDasharray="251" strokeDashoffset="63"
+                  transform="rotate(-90 50 50)" strokeLinecap="round" />
+              </svg>
+              <span className={styles.scoreNum}>75</span>
             </div>
           </div>
 
-          <div className={styles.row}>
-            <div className={styles.field}>
-              <label>Brand Age</label>
-              <select value={form.brandAge} onChange={set('brandAge')}>
-                <option value="">Select age</option>
-                <option>Less than 2 years</option>
-                <option>2–5 years</option>
-                <option>5–15 years</option>
-                <option>15–30 years</option>
-                <option>30+ years</option>
-              </select>
-            </div>
-            <div className={styles.field}>
-              <label>Target Audience</label>
-              <select value={form.targetAudience} onChange={set('targetAudience')}>
-                <option value="">Select audience</option>
-                <option>Gen Z 18–25</option>
-                <option>Millennials 26–35</option>
-                <option>Mixed Age Groups</option>
-                <option>Regional/Tier 2–3</option>
-                <option>Premium/Luxury</option>
-              </select>
-            </div>
+          <div className={styles.dimList}>
+            {DIMENSIONS.map(d => (
+              <div key={d.label} className={styles.dimRow}>
+                <span className={styles.dimLabel}>{d.label}</span>
+                <div className={styles.dimBar}>
+                  <div className={styles.dimFill} style={{
+                    width: `${60 + Math.random() * 30}%`,
+                    background: d.color,
+                  }} />
+                </div>
+              </div>
+            ))}
           </div>
+        </div>
+      </section>
 
-          <hr className={styles.divider} />
-          <p className={styles.sectionLabel}>Online Presence</p>
+      {/* ── How it works ── */}
+      <section className={styles.howSection}>
+        <div className={styles.sectionLabel}>How it works</div>
+        <h2 className={styles.sectionHeading}>From input to insight in minutes</h2>
 
-          <div className={styles.field}>
-            <label>Website URL *</label>
-            <input type="url" value={form.websiteUrl} onChange={set('websiteUrl')}
-              placeholder="https://yourbrand.com" required />
-          </div>
-
-          <div className={styles.field}>
-            <label>Instagram Handle</label>
-            <input type="text" value={form.instagramHandle} onChange={set('instagramHandle')}
-              placeholder="yourbrand — without the @" />
-          </div>
-
-          <hr className={styles.divider} />
-          <p className={styles.sectionLabel}>Competitors</p>
-
-          <div className={styles.row}>
-            <div className={styles.field}>
-              <label>Competitor 1 Name</label>
-              <input type="text" value={form.comp1Name} onChange={set('comp1Name')}
-                placeholder="e.g. The Derma Co" />
+        <div className={styles.steps}>
+          {STEPS.map((s, i) => (
+            <div key={s.num} className={styles.step}>
+              <div className={styles.stepNum}>{s.num}</div>
+              <div className={styles.stepBody}>
+                <h3 className={styles.stepTitle}>{s.title}</h3>
+                <p className={styles.stepText}>{s.body}</p>
+              </div>
+              {i < STEPS.length - 1 && <div className={styles.stepConnector} />}
             </div>
-            <div className={styles.field}>
-              <label>Competitor 1 Website</label>
-              <input type="url" value={form.comp1Url} onChange={set('comp1Url')}
-                placeholder="https://competitor.com" />
-            </div>
-          </div>
+          ))}
+        </div>
+      </section>
 
-          <div className={styles.row}>
-            <div className={styles.field}>
-              <label>Competitor 2 Name <span style={{color:'var(--text-dim)'}}>optional</span></label>
-              <input type="text" value={form.comp2Name} onChange={set('comp2Name')}
-                placeholder="e.g. Minimalist" />
-            </div>
-            <div className={styles.field}>
-              <label>Competitor 2 Website <span style={{color:'var(--text-dim)'}}>optional</span></label>
-              <input type="url" value={form.comp2Url} onChange={set('comp2Url')}
-                placeholder="https://competitor2.com" />
-            </div>
-          </div>
-
-          <hr className={styles.divider} />
-
-          <div className={styles.field}>
-            <label>Biggest Challenge Right Now *</label>
-            <textarea value={form.challenge} onChange={set('challenge')} required
-              placeholder="e.g. Younger audience doesn't connect with us, competitors are outpacing us on social media, our messaging feels generic..." />
-          </div>
-
-          {error && <p className={styles.errorMsg}>{error}</p>}
-
-          <button type="submit" className={styles.submitBtn} disabled={loading}>
-            {loading ? 'Running Audit…' : 'Run Brand Audit →'}
+      {/* ── For Indian brands ── */}
+      <section className={styles.contextSection}>
+        <div className={styles.contextCard}>
+          <div className={styles.sectionLabel}>Built for India</div>
+          <h2 className={styles.contextHeading}>
+            Indian consumers are different.<br />Your brand audit should be too.
+          </h2>
+          <p className={styles.contextBody}>
+            BrandShift understands regional audiences, D2C dynamics, and the competitive
+            landscape of Indian markets — not just generic global benchmarks.
+          </p>
+          <button className={styles.primaryBtn} onClick={() => router.push('/audit')}>
+            Audit My Brand →
           </button>
-        </form>
-      </div>
+        </div>
+      </section>
+
+      {/* ── Final CTA ── */}
+      <section className={styles.ctaSection}>
+        <h2 className={styles.ctaHeading}>Ready to see where you stand?</h2>
+        <p className={styles.ctaSub}>
+          Get a full brand audit in under 2 minutes. Free, no signup required.
+        </p>
+        <button className={styles.primaryBtn} onClick={() => router.push('/audit')}>
+          Start Free Audit →
+        </button>
+      </section>
+
+      {/* ── Footer ── */}
+      <footer className={styles.footer}>
+        <span className={styles.footerLogo}>BrandShift</span>
+        <span className={styles.footerNote}>AI Brand Intelligence for Indian Brands</span>
+      </footer>
+
     </div>
   );
 }
