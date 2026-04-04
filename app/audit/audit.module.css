@@ -1,0 +1,391 @@
+/* ── BrandShift Audit Wizard ─────────────────────────────────── */
+
+.page {
+  min-height: 100vh;
+  background: var(--bs-base);
+}
+
+/* ── Top Bar ─────────────────────────────────────────────────── */
+.topBar {
+  height: 56px;
+  padding: 0 40px;
+  display: flex;
+  align-items: center;
+  border-bottom: none;
+}
+
+.navLogo {
+  font-family: var(--font-headline);
+  font-size: 20px;
+  font-weight: 400;
+  color: var(--bs-text-primary);
+}
+
+/* ── Progress ─────────────────────────────────────────────────── */
+.progressSection {
+  padding: 24px 40px 0;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.progressHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.progressLabel {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--bs-text-secondary);
+}
+
+.progressPct {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--bs-text-secondary);
+}
+
+.progressTrack {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  width: 100%;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--bs-violet), var(--bs-orange));
+  transition: width 0.4s ease;
+}
+
+/* ── Main Content Grid ─────────────────────────────────────────── */
+.mainContent {
+  padding: 48px 40px;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: 80px;
+  align-items: start;
+}
+
+/* ── Left Column ──────────────────────────────────────────────── */
+.leftCol {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Step animation triggered by key change */
+@keyframes stepIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stepContent {
+  animation: stepIn 0.3s ease-out;
+}
+
+/* ── Step Typography ──────────────────────────────────────────── */
+.stepHeading {
+  font-family: var(--font-headline);
+  font-size: clamp(28px, 3.5vw, 40px);
+  font-weight: 400;
+  color: var(--bs-text-primary);
+  margin-bottom: 8px;
+  line-height: 1.2;
+}
+
+.stepSubheading {
+  font-family: var(--font-ui);
+  font-size: 15px;
+  color: var(--bs-text-secondary);
+  margin-bottom: 32px;
+  line-height: 1.6;
+}
+
+/* ── Form Fields ──────────────────────────────────────────────── */
+.field {
+  margin-bottom: 24px;
+}
+
+.fieldLabel {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--bs-text-secondary);
+  margin-bottom: 8px;
+  display: block;
+}
+
+.fieldInput,
+.fieldTextarea {
+  width: 100%;
+  background: var(--bs-card-dark);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: var(--bs-text-primary);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.fieldInput::placeholder,
+.fieldTextarea::placeholder {
+  color: var(--bs-text-tertiary);
+  font-family: var(--font-ui);
+  font-size: 14px;
+}
+
+.fieldInput:focus,
+.fieldTextarea:focus {
+  border-color: var(--bs-violet);
+  box-shadow: 0 0 0 3px rgba(124, 92, 191, 0.12);
+}
+
+.fieldTextarea {
+  min-height: 100px;
+  max-height: 200px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.inputError {
+  border-color: var(--destructive) !important;
+}
+
+.fieldError {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--destructive);
+  margin-top: 6px;
+}
+
+/* ── Bottom Nav ──────────────────────────────────────────────── */
+.bottomNav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 40px;
+}
+
+.backBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: var(--bs-text-secondary);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 10px 0;
+  transition: color 0.2s;
+}
+
+.backBtn:hover {
+  color: var(--bs-text-primary);
+}
+
+.continueBtn {
+  background: var(--bs-orange);
+  color: var(--bs-text-primary);
+  border: none;
+  border-radius: var(--radius);
+  padding: 14px 32px;
+  font-family: var(--font-ui);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.2s;
+  min-width: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.continueBtn:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.continueBtn:disabled {
+  cursor: not-allowed;
+}
+
+/* Button spinner */
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Right Column — Context Card ─────────────────────────────── */
+.rightCol {
+  /* on desktop it scrolls with page but doesn't need sticky since form is short */
+}
+
+.contextCard {
+  background: var(--bs-card-dark);
+  border: 1px solid rgba(124, 92, 191, 0.25);
+  border-radius: var(--radius);
+  padding: 32px;
+  position: sticky;
+  top: 40px;
+}
+
+.contextIcon {
+  color: var(--bs-violet);
+  margin-bottom: 20px;
+  display: block;
+}
+
+.contextTitle {
+  font-family: var(--font-headline);
+  font-size: 22px;
+  font-weight: 400;
+  color: var(--bs-text-primary);
+  margin-bottom: 12px;
+}
+
+.contextDesc {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: var(--bs-text-secondary);
+  line-height: 1.7;
+}
+
+/* ── Summary Card (Step 5) ───────────────────────────────────── */
+.summaryCard {
+  background: var(--bs-card-dark);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius);
+  padding: 24px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.summaryRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.summaryRowLast {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.summaryRowContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.summaryLabel {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--bs-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.summaryValue {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: var(--bs-text-primary);
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.summaryValueMuted {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: var(--bs-text-secondary);
+  line-height: 1.5;
+}
+
+.summaryEdit {
+  background: none;
+  border: none;
+  color: var(--bs-violet);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: opacity 0.2s;
+}
+
+.summaryEdit:hover {
+  opacity: 0.75;
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .mainContent {
+    grid-template-columns: 1fr;
+    gap: 40px;
+    padding: 40px;
+  }
+
+  .rightCol {
+    order: 2;
+  }
+
+  .contextCard {
+    position: static;
+  }
+}
+
+@media (max-width: 768px) {
+  .topBar {
+    padding: 0 20px;
+  }
+
+  .progressSection {
+    padding: 16px 20px 0;
+  }
+
+  .mainContent {
+    padding: 24px 20px;
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .rightCol {
+    display: none;
+  }
+
+  .stepHeading {
+    font-size: 28px;
+  }
+
+  .continueBtn {
+    flex: 1;
+  }
+}

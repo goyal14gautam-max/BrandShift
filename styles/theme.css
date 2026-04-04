@@ -1,0 +1,86 @@
+/* ── BrandShift Design System ───────────────────────────────── */
+
+:root {
+  --font-size: 16px;
+
+  /* Brand colour primitives */
+  --bs-base:           #08080E;
+  --bs-card-dark:      #0F0F1C;
+  --bs-card-light:     #15152A;
+  --bs-violet:         #7C5CBF;
+  --bs-orange:         #E8622A;
+  --bs-teal:           #2EC4A0;
+  --bs-amber:          #E8A030;
+  --bs-text-primary:   #EEEAF8;
+  --bs-text-secondary: #8A87A8;
+  --bs-text-tertiary:  #4A4868;
+
+  /* Semantic tokens */
+  --background:              var(--bs-base);
+  --foreground:              var(--bs-text-primary);
+  --card:                    var(--bs-card-dark);
+  --card-foreground:         var(--bs-text-primary);
+  --popover:                 var(--bs-card-light);
+  --popover-foreground:      var(--bs-text-primary);
+  --primary:                 var(--bs-violet);
+  --primary-foreground:      var(--bs-text-primary);
+  --secondary:               var(--bs-card-light);
+  --secondary-foreground:    var(--bs-text-primary);
+  --muted:                   var(--bs-card-dark);
+  --muted-foreground:        var(--bs-text-secondary);
+  --accent:                  var(--bs-orange);
+  --accent-foreground:       var(--bs-text-primary);
+  --destructive:             #d4183d;
+  --destructive-foreground:  #ffffff;
+  --border:                  rgba(255, 255, 255, 0.1);
+  --input:                   transparent;
+  --input-background:        var(--bs-card-dark);
+  --switch-background:       #cbced4;
+  --ring:                    var(--bs-violet);
+
+  /* Chart colours */
+  --chart-1: var(--bs-violet);
+  --chart-2: var(--bs-teal);
+  --chart-3: var(--bs-orange);
+  --chart-4: var(--bs-amber);
+  --chart-5: var(--bs-text-secondary);
+
+  /* Radius */
+  --radius:    0.5rem;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* Typography */
+  --font-headline: 'Instrument Serif', serif;
+  --font-ui:       'Geist', sans-serif;
+  --font-mono:     'Geist Mono', monospace;
+  --font-accent:   'Cormorant Garamond', serif;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+
+  /* Sidebar */
+  --sidebar:                    var(--bs-card-dark);
+  --sidebar-foreground:         var(--bs-text-primary);
+  --sidebar-primary:            var(--bs-violet);
+  --sidebar-primary-foreground: var(--bs-text-primary);
+  --sidebar-accent:             var(--bs-card-light);
+  --sidebar-accent-foreground:  var(--bs-text-primary);
+  --sidebar-border:             rgba(255, 255, 255, 0.1);
+  --sidebar-ring:               var(--bs-violet);
+
+  /* ── Bridge: keep old variable names working ─────────────── */
+  --bg:          var(--bs-base);
+  --surface:     var(--bs-card-dark);
+  --surface2:    var(--bs-card-light);
+  --text:        var(--bs-text-primary);
+  --text-muted:  var(--bs-text-secondary);
+  --text-dim:    var(--bs-text-tertiary);
+  --accent-dim:  rgba(232, 98, 42, 0.15);
+  --green:       var(--bs-teal);
+  --amber:       var(--bs-amber);
+  --red:         #EF4444;
+  --font-heading: var(--font-headline);
+  --font-body:    var(--font-ui);
+}

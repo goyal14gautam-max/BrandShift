@@ -13,9 +13,9 @@ const DIM_META = {
 };
 
 function scoreColor(s) {
-  if (s < 40) return 'var(--red)';
-  if (s <= 65) return 'var(--amber)';
-  return 'var(--green)';
+  if (s < 45) return 'var(--bs-orange)';
+  if (s <= 65) return 'var(--bs-amber)';
+  return 'var(--bs-teal)';
 }
 
 function AnimatedRing({ score }) {
@@ -62,18 +62,26 @@ export default function Results() {
   const [score, setScore] = useState(null);
   const [brand, setBrand] = useState(null);
 
-  const [direction, setDirection]     = useState('');
-  const [toneDir, setToneDir]         = useState('');
-  const [audience, setAudience]       = useState('');
-  const [market, setMarket]           = useState('');
-  const [generating, setGenerating]   = useState(false);
-  const [genError, setGenError]       = useState('');
+  const [direction, setDirection]       = useState('');
+  const [toneDir, setToneDir]           = useState('');
+  const [audience, setAudience]         = useState('');
+  const [market, setMarket]             = useState('');
+  const [generating, setGenerating]     = useState(false);
+  const [genError, setGenError]         = useState('');
+  const [constitutionDone, setConstitutionDone] = useState(false);
+  const [bannerDismissed, setBannerDismissed]   = useState(false);
 
   useEffect(() => {
     const s = localStorage.getItem('brandshift_score');
     const b = localStorage.getItem('brandshift_brand');
     if (s) setScore(JSON.parse(s));
-    if (b) setBrand(JSON.parse(b));
+    if (b) {
+      const parsed = JSON.parse(b);
+      setBrand(parsed);
+      if (parsed.brandName) localStorage.setItem('brandshift_active_brand', parsed.brandName);
+    }
+    setConstitutionDone(!!localStorage.getItem('brandshift_constitution_done'));
+    setBannerDismissed(!!sessionStorage.getItem('brandshift_banner_dismissed'));
   }, []);
 
   async function handleRoadmap(e) {
@@ -216,7 +224,28 @@ export default function Results() {
           </div>
         )}
 
-        {/* Direction Input */}
+        {/* Constitution banner or Roadmap form */}
+        {!constitutionDone && !bannerDismissed ? (
+          <div className={styles.constitutionBanner}>
+            <button
+              className={styles.bannerDismiss}
+              onClick={() => {
+                sessionStorage.setItem('brandshift_banner_dismissed', '1');
+                setBannerDismissed(true);
+              }}
+              aria-label="Dismiss"
+            >×</button>
+            <div className={styles.bannerContent}>
+              <p className={styles.bannerEyebrow}>One more step to unlock your full dashboard →</p>
+              <p className={styles.bannerText}>
+                Complete your Brand Constitution (12 minutes) to get personalised daily briefs, weekly score tracking, and a roadmap built around your specific brand voice.
+              </p>
+            </div>
+            <a href="/constitution" className={styles.constitutionBtn}>
+              Build My Constitution →
+            </a>
+          </div>
+        ) : (
         <div>
           <h2 className={styles.sectionTitle}>Where Do You Want to Take This Brand?</h2>
           <form className={styles.directionBox} onSubmit={handleRoadmap}>
@@ -269,6 +298,8 @@ export default function Results() {
             </button>
           </form>
         </div>
+        )}
+
       </div>
     </div>
   );

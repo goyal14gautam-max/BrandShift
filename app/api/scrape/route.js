@@ -19,7 +19,8 @@ async function firecrawlScrape(url) {
     const fc = getFirecrawl();
     const result = await fc.v1.scrapeUrl(url, { formats: ['markdown'] });
     return result?.markdown || result?.content || '';
-  } catch {
+  } catch (err) {
+    console.error(`Firecrawl scrape failed for ${url}:`, err.message);
     return '';
   }
 }
@@ -142,35 +143,106 @@ export async function POST(request) {
   const body = await request.json();
   const { websiteUrl, instagramHandle, comp1Url, comp2Url } = body;
 
+  console.log('Scrape route called with:', {
+    websiteUrl,
+    instagramHandle,
+    comp1Url,
+    comp2Url,
+  });
+
   const base = websiteUrl?.replace(/\/$/, '') || '';
 
-  const [
-    homepageResult,
-    aboutResult,
-    blogResult,
-    comp1Result,
-    comp2Result,
-    instagramResult,
-  ] = await Promise.allSettled([
-    firecrawlScrape(base),
-    scrapeWithFallback(base, ['/about', '/about-us', '/pages/about-us', '/pages/about', '/company', '/our-story', '/who-we-are']),
-    scrapeWithFallback(base, ['/blog', '/blogs', '/news', '/articles', '/newsroom', '/press', '/media']),
-    comp1Url ? firecrawlScrape(comp1Url) : Promise.resolve(''),
-    comp2Url ? firecrawlScrape(comp2Url) : Promise.resolve(''),
-    scrapeInstagram(instagramHandle),
-  ]);
+  let scrapedHomepage = '';
+  let scrapedAbout    = '';
+  let scrapedBlog     = '';
+  let scrapedComp1    = '';
+  let scrapedComp2    = '';
+  let scrapedInstagram = '';
 
-  const getValue = r => (r.status === 'fulfilled' ? r.value : '');
+  try {
+    scrapedHomepage = await firecrawlScrape(base);
+  } catch (err) {
+    console.error('Homepage scrape failed:', err.message);
+    scrapedHomepage = '';
+  }
 
-  const cleanedInstagram = cleanMarkdown(getValue(instagramResult));
+  try {
+    scrapedAbout = await scrapeWithFallback(base, ['/about', '/about-us', '/pages/about-us', '/pages/about', '/company', '/our-story', '/who-we-are']);
+  } catch (err) {
+    console.error('About scrape failed:', err.message);
+    scrapedAbout = '';
+  }
+
+  try {
+    scrapedBlog = await scrapeWithFallback(base, ['/blog', '/blogs', '/news', '/articles', '/newsroom', '/press', '/media']);
+  } catch (err) {
+    console.error('Blog scrape failed:', err.message);
+    scrapedBlog = '';
+  }
+
+  try {
+    scrapedComp1 = comp1Url ? await firecrawlScrape(comp1Url) : '';
+  } catch (err) {
+    console.error('Competitor 1 scrape failed:', err.message);
+    scrapedComp1 = '';
+  }
+
+  try {
+    scrapedComp2 = comp2Url ? await firecrawlScrape(comp2Url) : '';
+  } catch (err) {
+    console.error('Competitor 2 scrape failed:', err.message);
+    scrapedComp2 = '';
+  }
+
+  try {
+    scrapedInstagram = await scrapeInstagram(instagramHandle);
+  } catch (err) {
+    console.error('Instagram scrape failed:', err.message);
+    scrapedInstagram = '';
+  }
+
+  console.log('=== SCRAPE RESULTS ===');
+  console.log('Website homepage:', {
+    success: !!scrapedHomepage,
+    length: scrapedHomepage?.length || 0,
+    preview: scrapedHomepage?.slice(0, 100) || 'EMPTY',
+  });
+  console.log('Website about:', {
+    success: !!scrapedAbout,
+    length: scrapedAbout?.length || 0,
+    preview: scrapedAbout?.slice(0, 100) || 'EMPTY',
+  });
+  console.log('Blog:', {
+    success: !!scrapedBlog,
+    length: scrapedBlog?.length || 0,
+    preview: scrapedBlog?.slice(0, 100) || 'EMPTY',
+  });
+  console.log('Instagram:', {
+    success: !!scrapedInstagram,
+    length: scrapedInstagram?.length || 0,
+    preview: scrapedInstagram?.slice(0, 100) || 'EMPTY',
+  });
+  console.log('Competitor 1:', {
+    success: !!scrapedComp1,
+    length: scrapedComp1?.length || 0,
+    preview: scrapedComp1?.slice(0, 100) || 'EMPTY',
+  });
+  console.log('Competitor 2:', {
+    success: !!scrapedComp2,
+    length: scrapedComp2?.length || 0,
+    preview: scrapedComp2?.slice(0, 100) || 'EMPTY',
+  });
+  console.log('=== END SCRAPE RESULTS ===');
+
+  const cleanedInstagram = cleanMarkdown(scrapedInstagram);
   const instagramSignals = await extractInstagramSignals(cleanedInstagram);
 
   return NextResponse.json({
-    scraped_homepage:  cleanMarkdown(getValue(homepageResult)),
-    scraped_about:     cleanMarkdown(getValue(aboutResult)),
-    scraped_blog:      cleanMarkdown(getValue(blogResult)),
-    scraped_comp1:     cleanMarkdown(getValue(comp1Result)),
-    scraped_comp2:     cleanMarkdown(getValue(comp2Result)),
+    scraped_homepage:  cleanMarkdown(scrapedHomepage),
+    scraped_about:     cleanMarkdown(scrapedAbout),
+    scraped_blog:      cleanMarkdown(scrapedBlog),
+    scraped_comp1:     cleanMarkdown(scrapedComp1),
+    scraped_comp2:     cleanMarkdown(scrapedComp2),
     scraped_instagram: cleanedInstagram + instagramSignals,
   });
 }

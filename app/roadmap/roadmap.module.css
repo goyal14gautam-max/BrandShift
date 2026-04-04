@@ -230,6 +230,29 @@
 }
 
 /* ── Download ── */
+.actionRow {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.dashboardBtn {
+  background: var(--bs-orange);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 0.875rem 2rem;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  font-family: var(--font-ui);
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+
+.dashboardBtn:hover { opacity: 0.9; }
+
 .downloadBtn {
   background: var(--surface);
   color: var(--text);

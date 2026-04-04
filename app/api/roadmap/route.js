@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { ROADMAP_PROMPT } from '@/lib/prompts';
+import { updateBrandProfile } from '@/lib/supabase';
+import { flattenRoadmapToTasks } from '@/lib/helpers';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -48,6 +50,19 @@ export async function POST(request) {
 
   if (!parsed) {
     return NextResponse.json({ error: 'Failed to parse roadmap response' }, { status: 500 });
+  }
+
+  try {
+    await updateBrandProfile(brandName, {
+      current_roadmap:    parsed,
+      roadmap_start_date: new Date().toISOString(),
+      current_week:       1,
+      roadmap_direction:  direction || '',
+      roadmap_tone:       toneDirection || '',
+      tasks:              flattenRoadmapToTasks(parsed),
+    });
+  } catch (err) {
+    console.error('roadmap profile update failed:', err.message);
   }
 
   return NextResponse.json(parsed);

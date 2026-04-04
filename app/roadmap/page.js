@@ -110,10 +110,15 @@ export default function Roadmap() {
           </div>
         )}
 
-        {/* Download */}
-        <button className={styles.downloadBtn} onClick={() => window.print()}>
-          Download Roadmap (PDF)
-        </button>
+        {/* Actions */}
+        <div className={styles.actionRow}>
+          <a href="/dashboard" className={styles.dashboardBtn}>
+            Go to Dashboard →
+          </a>
+          <button className={styles.downloadBtn} onClick={() => window.print()}>
+            Download Roadmap (PDF)
+          </button>
+        </div>
       </div>
     </div>
   );

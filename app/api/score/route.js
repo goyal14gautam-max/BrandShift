@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { SCORING_SYSTEM_PROMPT, SCORING_USER_PROMPT } from '@/lib/prompts';
-import { saveAudit } from '@/lib/supabase';
+import { saveAudit, getBrandProfile, createBrandProfile, saveScoreToHistory } from '@/lib/supabase';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -81,8 +81,33 @@ export async function POST(request) {
       scoreData: parsed,
     });
   } catch (err) {
-    console.error('Supabase save failed:', err.message);
+    console.error('saveAudit failed:', err.message);
   }
 
-  return NextResponse.json(parsed);
+  let brandProfileId = null;
+  try {
+    const existing = await getBrandProfile(brandName);
+    if (!existing) {
+      brandProfileId = await createBrandProfile({
+        brandName,
+        industry,
+        brandAge,
+        targetAudience,
+        websiteUrl:      body.websiteUrl      || '',
+        instagramHandle: body.instagramHandle || '',
+        marketFocus:     body.marketFocus     || '',
+        competitors: [
+          { name: body.comp1Name || '', url: body.comp1Url || '' },
+          { name: body.comp2Name || '', url: body.comp2Url || '' },
+        ].filter(c => c.name || c.url),
+      });
+    } else {
+      brandProfileId = existing.id;
+    }
+    await saveScoreToHistory(brandName, parsed);
+  } catch (err) {
+    console.error('brand_profiles save failed:', err.message);
+  }
+
+  return NextResponse.json({ ...parsed, brandProfileId });
 }
