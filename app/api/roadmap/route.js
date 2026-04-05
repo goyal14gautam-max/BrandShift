@@ -40,17 +40,28 @@ export async function POST(request) {
     market_focus:     marketFocus || 'Not specified',
   });
 
+  console.log('=== ROADMAP API CALLED ===');
+  console.log('Brand:', brandName, '| Industry:', industry);
+
   let text = await callClaude(filledPrompt);
+  console.log('Claude raw response length:', text.length);
+  console.log('Claude raw preview:', text.slice(0, 300));
+
   let parsed = extractJSON(text);
 
   if (!parsed) {
+    console.log('First parse failed, retrying...');
     text = await callClaude(filledPrompt);
     parsed = extractJSON(text);
   }
 
   if (!parsed) {
+    console.error('Roadmap parse failed after retry. Raw text:', text.slice(0, 500));
     return NextResponse.json({ error: 'Failed to parse roadmap response' }, { status: 500 });
   }
+
+  console.log('Roadmap parsed successfully. Keys:', Object.keys(parsed));
+  console.log('=== ROADMAP API DONE ===');
 
   try {
     await updateBrandProfile(brandName, {
