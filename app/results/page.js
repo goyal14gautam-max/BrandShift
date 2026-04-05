@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import {
   Eye, Globe, Users, TrendingUp, MessageSquare, Target,
   CheckCircle, AlertCircle, Download, Share2, Check,
-  ChevronDown, ChevronUp, FileText, ArrowUp, Instagram,
+  ChevronDown, ChevronUp, FileText, ArrowUp, AtSign,
 } from 'lucide-react';
 import { useInView } from '@/hooks/useInView';
 import BrandRadarChart from '@/components/BrandRadarChart';
@@ -274,7 +274,7 @@ export default function Results() {
                 <div className={styles.metricLabel}>Sources analysed</div>
                 <div className={styles.sourceIconRow}>
                   <Globe   size={16} style={{ color: sourceAvail.homepage     ? 'var(--bs-teal)' : 'var(--bs-text-tertiary)' }} />
-                  <Instagram size={16} style={{ color: sourceAvail.instagram  ? 'var(--bs-teal)' : 'var(--bs-text-tertiary)' }} />
+                  <AtSign size={16} style={{ color: sourceAvail.instagram  ? 'var(--bs-teal)' : 'var(--bs-text-tertiary)' }} />
                   <Users   size={16} style={{ color: sourceAvail.competitors  ? 'var(--bs-teal)' : 'var(--bs-text-tertiary)' }} />
                   <FileText size={16} style={{ color: sourceAvail.blog        ? 'var(--bs-teal)' : 'var(--bs-text-tertiary)' }} />
                 </div>
