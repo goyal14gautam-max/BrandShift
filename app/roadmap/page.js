@@ -1,26 +1,96 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import styles from './roadmap.module.css';
 
 export default function Roadmap() {
+  const router = useRouter();
   const [roadmap, setRoadmap] = useState(null);
   const [brand, setBrand]     = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState('');
 
   useEffect(() => {
-    const r = localStorage.getItem('brandshift_roadmap');
-    const b = localStorage.getItem('brandshift_brand');
-    if (r) setRoadmap(JSON.parse(r));
-    if (b) setBrand(JSON.parse(b));
+    // If we already generated this roadmap, use cached version
+    const cached = localStorage.getItem('brandshift_roadmap');
+    if (cached) {
+      setRoadmap(JSON.parse(cached));
+      const b = localStorage.getItem('brandshift_brand');
+      if (b) setBrand(JSON.parse(b));
+      setLoading(false);
+      return;
+    }
+
+    // Otherwise generate from score data
+    const rawScore = localStorage.getItem('brandshift_score');
+    const rawBrand = localStorage.getItem('brandshift_brand');
+    const rawIntake = localStorage.getItem('brandshift_intake');
+
+    if (!rawScore) {
+      router.push('/audit');
+      return;
+    }
+
+    const scoreData = JSON.parse(rawScore);
+    const brandData = rawBrand ? JSON.parse(rawBrand) : {};
+    const intake    = rawIntake ? JSON.parse(rawIntake) : {};
+
+    if (rawBrand) setBrand(brandData);
+
+    generateRoadmap(scoreData, brandData, intake);
   }, []);
 
-  if (!roadmap) {
+  async function generateRoadmap(scoreData, brandData, intake) {
+    try {
+      const res = await fetch('/api/roadmap', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          brandName:      brandData.brandName || intake.brandName || 'Your Brand',
+          industry:       brandData.industry  || intake.industry  || '',
+          targetAudience: intake.targetAudience || '',
+          direction:      intake.challenge || '',
+          toneDirection:  '',
+          marketFocus:    '',
+          scoreData,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.error) throw new Error(data.error);
+
+      localStorage.setItem('brandshift_roadmap', JSON.stringify(data));
+      setRoadmap(data);
+    } catch (err) {
+      setError(err.message || 'Failed to generate roadmap. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (loading) {
     return (
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh', color:'var(--text-muted)' }}>
-        No roadmap found. <a href="/" style={{ color:'var(--accent)', marginLeft:'0.5rem' }}>Start an audit →</a>
+      <div className={styles.loadingState}>
+        <div className={styles.spinner} />
+        <p className={styles.loadingText}>Building your brand roadmap...</p>
       </div>
     );
   }
+
+  if (error) {
+    return (
+      <div className={styles.errorState}>
+        <p className={styles.errorMsg}>{error}</p>
+        <button className={styles.retryBtn} onClick={() => router.push('/results')}>
+          ← Back to results
+        </button>
+      </div>
+    );
+  }
+
+  if (!roadmap) return null;
 
   return (
     <div className={styles.page}>
@@ -29,7 +99,6 @@ export default function Roadmap() {
       </header>
 
       <div className={styles.container}>
-        {/* Top */}
         <div className={styles.topSection}>
           <h1 className={styles.brandHeading}>
             {brand?.brandName || 'Your Brand'} — Brand Roadmap
@@ -37,7 +106,6 @@ export default function Roadmap() {
           <p className={styles.subtext}>Your personalised execution plan</p>
         </div>
 
-        {/* Section 1: 2 Months */}
         {roadmap.two_months && (
           <div className={styles.section}>
             <div className={styles.sectionHeader}>
@@ -58,7 +126,6 @@ export default function Roadmap() {
           </div>
         )}
 
-        {/* Section 2: 6 Month Plan */}
         {roadmap.six_months && (
           <div className={styles.section}>
             <div className={styles.sectionHeader}>
@@ -79,7 +146,6 @@ export default function Roadmap() {
           </div>
         )}
 
-        {/* Section 3: 1 Year Vision */}
         {roadmap.one_year && (
           <div className={styles.section}>
             <div className={styles.sectionHeader}>
@@ -97,7 +163,6 @@ export default function Roadmap() {
           </div>
         )}
 
-        {/* Section 4: Bigger Picture */}
         {roadmap.bigger_picture && (
           <div className={styles.section}>
             <div className={styles.sectionHeader}>
@@ -110,7 +175,6 @@ export default function Roadmap() {
           </div>
         )}
 
-        {/* Actions */}
         <div className={styles.actionRow}>
           <a href="/dashboard" className={styles.dashboardBtn}>
             Go to Dashboard →
