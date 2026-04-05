@@ -82,6 +82,12 @@ function truncate(text, maxLen = 180) {
   return text.slice(0, maxLen).trimEnd() + '…';
 }
 
+function getTwoSentences(text) {
+  if (!text) return '';
+  const sentences = text.match(/[^.!?]+[.!?]+/g) || [];
+  return sentences.slice(0, 2).join(' ').trim() || text;
+}
+
 // ── Sub-components ─────────────────────────────────────────────
 function ScoreRing({ score }) {
   const [offset, setOffset] = useState(534);
@@ -308,7 +314,7 @@ export default function Results() {
               <TrendingUp size={24} style={{ color: 'var(--bs-teal)', flexShrink: 0 }} />
               <div style={{ flex: 1 }}>
                 <p className={styles.simInsightMain}>
-                  Fixing your top 2 gaps could push your score from {overall} to {sim.simulated}
+                  Fixing your top 2 gaps could push your score from {Math.round(overall)} to {Math.round(sim.simulated)}
                 </p>
                 {gap1Name && gap2Name && (
                   <p className={styles.simInsightSub}>
@@ -316,7 +322,7 @@ export default function Results() {
                   </p>
                 )}
               </div>
-              <span className={styles.simInsightDelta}>+{sim.improvement}</span>
+              <span className={styles.simInsightDelta}>+{Math.round(sim.improvement)}</span>
             </div>
           )}
 
@@ -434,33 +440,35 @@ export default function Results() {
                           </div>
                         </div>
                         <AnimatedBar score={s} color={col} delay={i * 80} />
-                        {justification && (
-                          <p className={styles.dimSmallJust}>{truncate(justification, 160)}</p>
+
+                        {/* Justification — full text when expanded, two sentences when collapsed */}
+                        {isExpanded ? (
+                          justification && <p className={styles.dimExpandJust}>{justification}</p>
+                        ) : (
+                          justification && <p className={styles.dimSmallJust}>{getTwoSentences(justification)}</p>
                         )}
+
+                        {/* Evidence quote — always visible */}
                         {evidenceQ && (
                           <p className={styles.dimSmallEvidence}>{evidenceQ}</p>
                         )}
+
+                        {/* Improvement pill — always visible */}
                         {improvement && (
                           <span className={styles.improvePill}>
                             <ArrowUp size={10} style={{ marginRight: 4 }} />
                             {truncate(improvement, 90)}
                           </span>
                         )}
-                        <div className={`${styles.dimExpand} ${isExpanded ? styles.dimExpandOpen : ''}`}>
-                          {justification && (
-                            <p className={styles.dimExpandJust}>{justification}</p>
-                          )}
-                          {evidenceQ && (
-                            <blockquote className={styles.dimExpandQuote}>{evidenceQ}</blockquote>
-                          )}
-                          {voiceWords.length > 0 && (
-                            <div className={styles.voicePills}>
-                              {voiceWords.map((w, wi) => (
-                                <span key={wi} className={styles.voicePill}>{w}</span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+
+                        {/* Voice words — expanded only, tone_voice dim */}
+                        {isExpanded && voiceWords.length > 0 && (
+                          <div className={styles.voicePills}>
+                            {voiceWords.map((w, wi) => (
+                              <span key={wi} className={styles.voicePill}>{w}</span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </FadeUp>
                   );
