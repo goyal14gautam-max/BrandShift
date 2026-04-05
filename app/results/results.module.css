@@ -247,6 +247,164 @@
   line-height: 1.6;
 }
 
+/* Framework badge */
+.frameworkBadge {
+  display: inline-block;
+  background: rgba(124, 92, 191, 0.12);
+  color: var(--bs-violet);
+  border: 1px solid rgba(124, 92, 191, 0.2);
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  padding: 3px 10px;
+  border-radius: 100px;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+}
+
+/* Evidence quote inside dim card */
+.dimEvidenceQuote {
+  border-left: 2px solid rgba(124, 92, 191, 0.3);
+  padding-left: 12px;
+  margin: 12px 0 0;
+  font-family: var(--font-accent);
+  font-size: 14px;
+  font-style: italic;
+  color: var(--bs-text-secondary);
+  line-height: 1.6;
+}
+
+/* Improvement action */
+.dimImprovement {
+  margin-top: 12px;
+}
+
+.dimImprovementLabel {
+  display: block;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  color: var(--bs-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+
+.dimImprovementText {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--bs-text-secondary);
+  line-height: 1.5;
+}
+
+/* Voice in 3 words pills */
+.voicePills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.voicePill {
+  background: var(--bs-card-light);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--bs-text-secondary);
+  padding: 4px 12px;
+  border-radius: 100px;
+}
+
+/* ── Keller level indicator ─────────────────────────────────── */
+.kellerWrap {
+  margin-top: 40px;
+  text-align: center;
+}
+
+.kellerLevelRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+
+.kellerNumber {
+  font-family: var(--font-mono);
+  font-size: 48px;
+  color: var(--bs-violet);
+  line-height: 1;
+}
+
+.kellerOf {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  color: var(--bs-text-tertiary);
+}
+
+.kellerTitle {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--bs-text-tertiary);
+  margin-left: 8px;
+}
+
+.kellerLevels {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.kellerLvl {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  padding: 4px 14px;
+  border-radius: 100px;
+}
+
+.kellerLvlAchieved {
+  color: var(--bs-teal);
+  background: rgba(46, 196, 160, 0.1);
+  border: 1px solid rgba(46, 196, 160, 0.2);
+}
+
+.kellerLvlCurrent {
+  color: var(--bs-violet);
+  background: rgba(124, 92, 191, 0.15);
+  border: 1px solid rgba(124, 92, 191, 0.3);
+  font-weight: 500;
+}
+
+.kellerLvlFuture {
+  color: var(--bs-text-tertiary);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.kellerArrow {
+  font-size: 9px;
+  margin-right: 2px;
+}
+
+.kellerExplanation {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--bs-text-secondary);
+  max-width: 540px;
+  margin: 0 auto 16px;
+  line-height: 1.7;
+  text-align: center;
+}
+
+.channelWeights {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--bs-text-tertiary);
+  text-align: center;
+}
+
 /* ── 3 — Key findings ───────────────────────────────────────── */
 .findingsGrid {
   display: grid;

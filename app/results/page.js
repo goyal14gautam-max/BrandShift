@@ -233,6 +233,43 @@ export default function Results() {
             competitorData={scoreData.competitor_scores?.dimensions || null}
             dataConfidence={scoreData.data_confidence}
           />
+
+          {/* Keller level indicator */}
+          {scoreData.keller_level && (
+            <FadeUp delay={200}>
+              <div className={styles.kellerWrap}>
+                <div className={styles.kellerLevelRow}>
+                  <span className={styles.kellerNumber}>{scoreData.keller_level}</span>
+                  <span className={styles.kellerOf}> of 4</span>
+                  <span className={styles.kellerTitle}>Brand Resonance Level</span>
+                </div>
+                <div className={styles.kellerLevels}>
+                  {['Identity', 'Meaning', 'Response', 'Resonance'].map((lvl, i) => {
+                    const n = i + 1;
+                    const cls = n < scoreData.keller_level
+                      ? styles.kellerLvlAchieved
+                      : n === scoreData.keller_level
+                        ? styles.kellerLvlCurrent
+                        : styles.kellerLvlFuture;
+                    return (
+                      <span key={lvl} className={`${styles.kellerLvl} ${cls}`}>
+                        {n === scoreData.keller_level && <span className={styles.kellerArrow}>▶ </span>}
+                        {lvl}
+                      </span>
+                    );
+                  })}
+                </div>
+                {scoreData.keller_level_explanation && (
+                  <p className={styles.kellerExplanation}>{scoreData.keller_level_explanation}</p>
+                )}
+                {scoreData.channel_weights && (
+                  <p className={styles.channelWeights}>
+                    Analysis weighted: Instagram {scoreData.channel_weights.instagram}% · Website {scoreData.channel_weights.website}% · Competitors {scoreData.channel_weights.competitor}% · Blog {scoreData.channel_weights.blog}%
+                  </p>
+                )}
+              </div>
+            </FadeUp>
+          )}
         </section>
 
         {/* ── 3 — Dimension breakdown ── */}
@@ -240,12 +277,21 @@ export default function Results() {
           <h2 className={styles.sectionHeading}>Dimension Breakdown</h2>
           <div className={styles.dimGrid}>
             {DIM_CONFIG.map((dim, i) => {
-              const s    = getDimScore(dim.key);
-              const col  = scoreColor(s);
-              const Icon = dim.icon;
+              const s        = getDimScore(dim.key);
+              const col      = scoreColor(s);
+              const Icon     = dim.icon;
+              const dimData  = dims[dim.key];
+              const framework    = dimData?.framework || null;
+              const evidenceQ    = dimData?.evidence_quote || null;
+              const improvement  = dimData?.improvement_action || null;
+              const voiceWords   = dim.key === 'tone_voice' ? (dimData?.voice_in_3_words || []) : [];
+
               return (
                 <FadeUp key={dim.key} delay={i * 80}>
                   <div className={styles.dimCard}>
+                    {framework && (
+                      <span className={styles.frameworkBadge}>{framework}</span>
+                    )}
                     <div className={styles.dimCardHeader}>
                       <div>
                         <div className={styles.dimNameRow}>
@@ -258,6 +304,22 @@ export default function Results() {
                     </div>
                     <AnimatedBar score={s} color={col} delay={i * 100} />
                     <p className={styles.dimJustification}>{getDimJustification(dim.key)}</p>
+                    {evidenceQ && (
+                      <blockquote className={styles.dimEvidenceQuote}>{evidenceQ}</blockquote>
+                    )}
+                    {improvement && (
+                      <div className={styles.dimImprovement}>
+                        <span className={styles.dimImprovementLabel}>To improve by 10 points:</span>
+                        <p className={styles.dimImprovementText}>{improvement}</p>
+                      </div>
+                    )}
+                    {voiceWords.length > 0 && (
+                      <div className={styles.voicePills}>
+                        {voiceWords.map((word, wi) => (
+                          <span key={wi} className={styles.voicePill}>{word}</span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </FadeUp>
               );
