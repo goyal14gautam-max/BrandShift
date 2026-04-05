@@ -3,11 +3,46 @@ import { FirecrawlAppV1 as FirecrawlApp } from '@mendable/firecrawl-js';
 import Anthropic from '@anthropic-ai/sdk';
 import { cleanMarkdown } from '@/lib/cleaner';
 
-// Module-level instances (Fix 1)
 const firecrawl = new FirecrawlApp({ apiKey: process.env.FIRECRAWL_API_KEY });
 const anthropic  = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-// ── Core scrape helper ─────────────────────────────────────────
+// ── Timeout wrapper ──────────────────────────────────────────────
+function withTimeout(promise, ms, fallback = '') {
+  const timeout = new Promise(resolve => setTimeout(() => resolve(fallback), ms));
+  return Promise.race([promise, timeout]);
+}
+
+// ── Aggressive URL normalizer ────────────────────────────────────
+function extractHomepageUrl(url) {
+  if (!url || url.trim() === '') return '';
+  try {
+    let cleanUrl = url.trim();
+    if (!cleanUrl.startsWith('http')) cleanUrl = 'https://' + cleanUrl;
+    const parsed = new URL(cleanUrl);
+    // Always return just protocol + hostname — strip ALL paths, params, fragments
+    return parsed.protocol + '//' + parsed.hostname;
+  } catch {
+    const match = url.match(/(?:https?:\/\/)?([^\/\?#]+)/);
+    if (match) return 'https://' + match[1];
+    return url;
+  }
+}
+
+// ── Content validation ───────────────────────────────────────────
+function isValidContent(content, minLength = 300, homepageFingerprint = '') {
+  if (!content || content.length < minLength) return false;
+  const lower = content.toLowerCase();
+  const invalidSignals = [
+    'page not found', '404', 'we are sorry but this page',
+    'this page does not exist', 'page cannot be found',
+    "doesn't exist", 'no longer available', 'made an egg-sit',
+  ];
+  if (invalidSignals.some(sig => lower.includes(sig))) return false;
+  if (homepageFingerprint && content.slice(0, 200).trim() === homepageFingerprint) return false;
+  return true;
+}
+
+// ── Core firecrawl helper ────────────────────────────────────────
 async function firecrawlScrape(url, options = {}) {
   try {
     const result = await firecrawl.scrapeUrl(url, {
@@ -22,81 +57,80 @@ async function firecrawlScrape(url, options = {}) {
   }
 }
 
-// ── FIX 1 — Content validation ────────────────────────────────
-function isValidContent(content, minLength = 300) {
-  if (!content || content.length < minLength) return false;
-  const lower = content.toLowerCase();
-  const invalidSignals = [
-    'page not found', '404', 'we are sorry but this page',
-    'this page does not exist', 'page cannot be found',
-    "doesn't exist", 'no longer available', 'made an egg-sit',
-  ];
-  return !invalidSignals.some(sig => lower.includes(sig));
-}
-
-function isRealContent(content, homepagePrefix = '') {
-  if (!isValidContent(content, 500)) return false;
-  if (homepagePrefix && content.slice(0, 200).trim() === homepagePrefix) return false;
-  return true;
-}
-
-// ── About page (never returns homepage content) ────────────────
-async function scrapeAbout(base, homepageContent) {
-  const homepagePrefix = (homepageContent || '').slice(0, 200).trim();
-  const urls = [
-    base + '/pages/about-us',
-    base + '/about-us',
-    base + '/about',
-    base + '/our-story',
-    base + '/company',
-  ];
-  for (const url of urls) {
-    const content = await firecrawlScrape(url);
-    if (isRealContent(content, homepagePrefix)) return content;
-  }
-  return '';
-}
-
-// ── Blog (FIX 1: validate each attempt) ───────────────────────
-async function scrapeBlog(base) {
-  const urls = [
-    base + '/blogs',
-    base + '/blog',
-    base + '/news',
-    base + '/articles',
-    base + '/insights',
-  ];
-  for (const url of urls) {
-    const content = await firecrawlScrape(url, { waitFor: 2000 });
-    if (isValidContent(content)) return content;
-  }
-  console.log('Blog: no valid content found for this brand');
-  return '';
-}
-
-// ── FIX 2 — Homepage (fallback if onlyMainContent too sparse) ──
+// ── Named source scrapers ────────────────────────────────────────
 async function scrapeHomepage(url) {
-  const main = await firecrawlScrape(url, { onlyMainContent: true });
-  if (main && main.length >= 500) {
-    console.log('Homepage scrape method: onlyMainContent');
-    return main;
+  if (!url) return '';
+  try {
+    const main = await firecrawlScrape(url, { onlyMainContent: true });
+    if (main && main.length >= 500) {
+      console.log('Homepage: onlyMainContent, length', main.length);
+      return cleanMarkdown(main).slice(0, 4000);
+    }
+    // Too sparse — try without onlyMainContent
+    const full = await firecrawlScrape(url, { onlyMainContent: false });
+    const result = (full && full.length > (main || '').length) ? full : (main || '');
+    console.log('Homepage: full page fallback, length', result.length);
+    return cleanMarkdown(result).slice(0, 4000);
+  } catch (err) {
+    console.error('Homepage failed:', err.message);
+    return '';
   }
-  // Too sparse — try without onlyMainContent
-  const full = await firecrawlScrape(url, { onlyMainContent: false });
-  const result = (full && full.length > (main || '').length) ? full : (main || '');
-  console.log('Homepage scrape method: full page');
-  return result;
 }
 
-// ── Instagram via Apify REST API (Fix 2) ──────────────────────
+async function scrapeAbout(baseUrl, homepageFingerprint = '') {
+  if (!baseUrl) return '';
+  const paths = [
+    '/pages/about-us', '/about-us', '/about', '/our-story', '/company',
+  ];
+  const base = baseUrl.replace(/\/$/, '');
+  for (const path of paths) {
+    try {
+      const content = await firecrawlScrape(base + path);
+      if (isValidContent(content, 300, homepageFingerprint)) {
+        return cleanMarkdown(content).slice(0, 2000);
+      }
+    } catch { continue; }
+  }
+  return '';
+}
+
+async function scrapeBlog(baseUrl, homepageFingerprint = '') {
+  if (!baseUrl) return '';
+  const paths = [
+    '/blogs', '/blog', '/news', '/articles', '/insights',
+  ];
+  const base = baseUrl.replace(/\/$/, '');
+  for (const path of paths) {
+    try {
+      const content = await firecrawlScrape(base + path, { waitFor: 1000 });
+      if (isValidContent(content, 300, homepageFingerprint)) {
+        return cleanMarkdown(content).slice(0, 3000);
+      }
+    } catch { continue; }
+  }
+  console.log('Blog: no valid content found');
+  return '';
+}
+
+async function scrapeCompetitor(url) {
+  if (!url || url.trim() === '') return '';
+  // extractHomepageUrl already applied before calling this
+  try {
+    const content = await firecrawlScrape(url);
+    return cleanMarkdown(content).slice(0, 3000);
+  } catch (err) {
+    console.error('Competitor failed:', url, err.message);
+    return '';
+  }
+}
+
+// ── Instagram via Apify REST API ─────────────────────────────────
 async function scrapeInstagram(handle) {
   if (!handle) return '';
   const cleanHandle = handle.replace(/^@/, '').trim();
-
   try {
     const token = process.env.APIFY_API_TOKEN;
 
-    // Start run
     const runResponse = await fetch(
       `https://api.apify.com/v2/acts/apify~instagram-profile-scraper/runs?token=${token}`,
       {
@@ -107,18 +141,11 @@ async function scrapeInstagram(handle) {
     );
     const run = await runResponse.json();
     const runId = run?.data?.id;
-
-    if (!runId) {
-      console.error('Apify run failed to start:', run);
-      return '';
-    }
-
+    if (!runId) { console.error('Apify run failed to start:', run); return ''; }
     console.log('Apify run started:', runId);
 
-    // Poll for completion
     let attempts = 0;
     let status = 'RUNNING';
-
     while (status === 'RUNNING' && attempts < 15) {
       await new Promise(r => setTimeout(r, 8000));
       const statusData = await fetch(
@@ -129,12 +156,8 @@ async function scrapeInstagram(handle) {
       console.log(`Instagram poll attempt ${attempts}: ${status}`);
     }
 
-    if (status !== 'SUCCEEDED') {
-      console.error('Apify run did not succeed:', status);
-      return '';
-    }
+    if (status !== 'SUCCEEDED') { console.error('Apify run did not succeed:', status); return ''; }
 
-    // Get dataset ID then items
     const datasetId = await fetch(
       `https://api.apify.com/v2/actor-runs/${runId}?token=${token}`
     ).then(r => r.json()).then(d => d?.data?.defaultDatasetId);
@@ -159,14 +182,13 @@ async function scrapeInstagram(handle) {
         `Post ${i + 1}: "${(p.caption || p.text || '').slice(0, 200)}" | Likes: ${p.likesCount || p.likes || 0} | Comments: ${p.commentsCount || p.comments || 0}`
       ),
     ].join('\n');
-
   } catch (err) {
     console.error('Instagram scrape error:', err.message);
     return '';
   }
 }
 
-// ── Instagram signal extraction ────────────────────────────────
+// ── Instagram signal extraction ──────────────────────────────────
 async function extractInstagramSignals(captions) {
   if (!captions || captions.length < 50) return '';
   try {
@@ -206,88 +228,56 @@ Brand Personality: ${parsed.brand_personality}
   }
 }
 
-// ── POST handler ───────────────────────────────────────────────
+// ── POST handler ─────────────────────────────────────────────────
 export async function POST(request) {
   const body = await request.json();
   const { websiteUrl, instagramHandle, comp1Url, comp2Url } = body;
 
-  console.log('Firecrawl instance type:', typeof firecrawl?.scrapeUrl);
+  // Clean all URLs — strip paths/params, keep only hostname
+  const cleanWebsiteUrl = extractHomepageUrl(websiteUrl || '');
+  const cleanComp1Url   = extractHomepageUrl(comp1Url || '');
+  const cleanComp2Url   = extractHomepageUrl(comp2Url || '');
+
   console.log('Scrape route called with:', { websiteUrl, instagramHandle, comp1Url, comp2Url });
+  console.log('URLs after cleaning:', { cleanWebsiteUrl, cleanComp1Url, cleanComp2Url });
+  console.log('Competitor URLs after cleaning:', { comp1: cleanComp1Url, comp2: cleanComp2Url });
 
-  const base = (websiteUrl || '').replace(/\/$/, '');
+  // ── Homepage first (fingerprint needed for about/blog) ──────────
+  const homepageContent      = await withTimeout(scrapeHomepage(cleanWebsiteUrl), 15000);
+  const homepageFingerprint  = homepageContent.slice(0, 150).trim();
 
-  // ── Homepage ──────────────────────────────────────────────────
-  let scrapedHomepage = '';
-  try {
-    scrapedHomepage = await scrapeHomepage(base);
-  } catch (err) {
-    console.error('Homepage scrape failed:', err.message);
-  }
+  console.log('Homepage done, length:', homepageContent.length, '— starting parallel scrapes');
 
-  // ── About ─────────────────────────────────────────────────────
-  let scrapedAbout = '';
-  try {
-    scrapedAbout = await scrapeAbout(base, scrapedHomepage);
-  } catch (err) {
-    console.error('About scrape failed:', err.message);
-  }
+  // ── All remaining sources in parallel ───────────────────────────
+  const [
+    aboutContent,
+    blogContent,
+    instagramContent,
+    comp1Content,
+    comp2Content,
+  ] = await Promise.all([
+    withTimeout(scrapeAbout(cleanWebsiteUrl, homepageFingerprint), 10000),
+    withTimeout(scrapeBlog(cleanWebsiteUrl, homepageFingerprint),  10000),
+    withTimeout(scrapeInstagram(instagramHandle),                   40000),
+    withTimeout(scrapeCompetitor(cleanComp1Url),                   10000),
+    withTimeout(scrapeCompetitor(cleanComp2Url),                   10000),
+  ]);
 
-  // ── Blog ──────────────────────────────────────────────────────
-  let scrapedBlog = '';
-  try {
-    scrapedBlog = await scrapeBlog(base);
-  } catch (err) {
-    console.error('Blog scrape failed:', err.message);
-  }
-
-  // ── Competitors ───────────────────────────────────────────────
-  let scrapedComp1 = '';
-  try {
-    if (comp1Url) scrapedComp1 = cleanMarkdown(await firecrawlScrape(comp1Url)).slice(0, 3000);
-  } catch (err) {
-    console.error('Competitor 1 scrape failed:', err.message);
-  }
-
-  let scrapedComp2 = '';
-  try {
-    if (comp2Url) scrapedComp2 = cleanMarkdown(await firecrawlScrape(comp2Url)).slice(0, 3000);
-  } catch (err) {
-    console.error('Competitor 2 scrape failed:', err.message);
-  }
-
-  // ── Instagram ─────────────────────────────────────────────────
-  let scrapedInstagram = '';
-  try {
-    scrapedInstagram = await scrapeInstagram(instagramHandle);
-  } catch (err) {
-    console.error('Instagram scrape failed:', err.message);
-  }
-
-  // ── Clean + cap all sources ───────────────────────────────────
-  scrapedHomepage  = cleanMarkdown(scrapedHomepage).slice(0, 4000);
-  scrapedAbout     = cleanMarkdown(scrapedAbout).slice(0, 2000);
-  scrapedBlog      = cleanMarkdown(scrapedBlog).slice(0, 3000);
-  scrapedInstagram = cleanMarkdown(scrapedInstagram).slice(0, 3000);
+  const scrapedHomepage  = homepageContent;
+  const scrapedAbout     = aboutContent;
+  const scrapedBlog      = blogContent;
+  const scrapedComp1     = comp1Content;
+  const scrapedComp2     = comp2Content;
+  const scrapedInstagram = cleanMarkdown(instagramContent).slice(0, 3000);
 
   console.log('=== SCRAPE RESULTS ===');
-  console.log('Website homepage:', { success: !!scrapedHomepage, length: scrapedHomepage.length, preview: scrapedHomepage.slice(0, 100) || 'EMPTY' });
-  console.log('Website about:',   { success: !!scrapedAbout,    length: scrapedAbout.length,    preview: scrapedAbout.slice(0, 100)    || 'EMPTY' });
-  console.log('Blog:',            { success: !!scrapedBlog,     length: scrapedBlog.length,     preview: scrapedBlog.slice(0, 100)     || 'EMPTY' });
-  console.log('Instagram:',       { success: !!scrapedInstagram, length: scrapedInstagram.length, preview: scrapedInstagram.slice(0, 100) || 'EMPTY' });
-  console.log('Competitor 1:',    { success: !!scrapedComp1,    length: scrapedComp1.length,    preview: scrapedComp1.slice(0, 100)    || 'EMPTY' });
-  console.log('Competitor 2:',    { success: !!scrapedComp2,    length: scrapedComp2.length,    preview: scrapedComp2.slice(0, 100)    || 'EMPTY' });
+  console.log('Homepage:',    { length: scrapedHomepage.length,  preview: scrapedHomepage.slice(0, 100)  || 'EMPTY' });
+  console.log('About:',       { length: scrapedAbout.length,     preview: scrapedAbout.slice(0, 100)     || 'EMPTY' });
+  console.log('Blog:',        { length: scrapedBlog.length,      preview: scrapedBlog.slice(0, 100)      || 'EMPTY' });
+  console.log('Instagram:',   { length: scrapedInstagram.length, preview: scrapedInstagram.slice(0, 100) || 'EMPTY' });
+  console.log('Competitor 1:',{ length: scrapedComp1.length,     preview: scrapedComp1.slice(0, 100)     || 'EMPTY' });
+  console.log('Competitor 2:',{ length: scrapedComp2.length,     preview: scrapedComp2.slice(0, 100)     || 'EMPTY' });
   console.log('=== END SCRAPE RESULTS ===');
-
-  console.log('=== CONTENT LENGTHS AFTER CAPS ===');
-  console.log({
-    homepage:  scrapedHomepage.length,
-    about:     scrapedAbout.length,
-    blog:      scrapedBlog.length,
-    instagram: scrapedInstagram.length,
-    comp1:     scrapedComp1.length,
-    comp2:     scrapedComp2.length,
-    total:     [scrapedHomepage, scrapedAbout, scrapedBlog, scrapedInstagram, scrapedComp1, scrapedComp2].join('').length,
-  });
 
   const instagramSignals = await extractInstagramSignals(scrapedInstagram);
 
