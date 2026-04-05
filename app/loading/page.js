@@ -83,6 +83,7 @@ export default function Loading() {
       // Clear stale results from any previous audit immediately
       localStorage.removeItem('brandshift_score');
       localStorage.removeItem('brandshift_brand');
+      localStorage.removeItem('brandshift_scraped');
 
       const c1 = parseCompetitor(intake.competitor1);
       const c2 = parseCompetitor(intake.competitor2);
@@ -159,6 +160,13 @@ export default function Loading() {
       localStorage.setItem('brandshift_score',        JSON.stringify(scoreData));
       localStorage.setItem('brandshift_brand',        JSON.stringify({ brandName: intake.brandName, industry: intake.industry }));
       localStorage.setItem('brandshift_active_brand', intake.brandName);
+      localStorage.setItem('brandshift_scraped',      JSON.stringify({
+        screenshots:       scrapeData.screenshots      || {},
+        scraped_instagram: scrapeData.scraped_instagram || '',
+        comp1Name:         c1.name,
+        comp2Name:         c2.name,
+        websiteUrl:        intake.websiteUrl || '',
+      }));
 
       setProgress(100);
       await new Promise(r => setTimeout(r, 800));

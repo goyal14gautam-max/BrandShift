@@ -1,0 +1,266 @@
+'use client';
+
+import { useState } from 'react';
+import { Globe, AtSign, Target, ExternalLink } from 'lucide-react';
+import styles from './EvidenceSection.module.css';
+
+// ── Tab config ────────────────────────────────────────────────
+const TABS = [
+  { id: 'website',     label: 'Website',     icon: Globe   },
+  { id: 'instagram',   label: 'Instagram',   icon: AtSign  },
+  { id: 'competitors', label: 'Competitors', icon: Target  },
+];
+
+// ── Browser chrome mockup ─────────────────────────────────────
+function BrowserMockup({ screenshotUrl, url }) {
+  const displayUrl = url ? url.replace(/^https?:\/\//, '') : '';
+  return (
+    <div className={styles.browser}>
+      <div className={styles.browserChrome}>
+        <div className={styles.browserDots}>
+          <span className={styles.browserDot} style={{ background: '#FF5F57' }} />
+          <span className={styles.browserDot} style={{ background: '#FEBC2E' }} />
+          <span className={styles.browserDot} style={{ background: '#28C840' }} />
+        </div>
+        <div className={styles.browserBar}>
+          <Globe size={10} style={{ marginRight: 5, flexShrink: 0, color: 'var(--bs-text-tertiary)' }} />
+          <span className={styles.browserUrl}>{displayUrl || 'website'}</span>
+        </div>
+        {url && (
+          <a href={url} target="_blank" rel="noopener noreferrer" className={styles.browserExternal}>
+            <ExternalLink size={12} />
+          </a>
+        )}
+      </div>
+      <div className={styles.browserScreen}>
+        {screenshotUrl ? (
+          <img src={screenshotUrl} alt="Website screenshot" className={styles.screenshotImg} />
+        ) : (
+          <div className={styles.screenshotEmpty}>
+            <Globe size={28} style={{ color: 'var(--bs-text-tertiary)', marginBottom: 8 }} />
+            <p className={styles.screenshotEmptyText}>Screenshot not captured</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Instagram data parser ─────────────────────────────────────
+function parseInstagram(raw) {
+  if (!raw) return null;
+  const lines = raw.split('\n');
+  const profile = { username: '', followers: '', bio: '' };
+  const posts = [];
+  let inPosts = false;
+
+  for (const line of lines) {
+    if (line.startsWith('Username:'))    { profile.username  = line.replace('Username:', '').trim(); continue; }
+    if (line.startsWith('Followers:'))   { profile.followers = line.replace('Followers:', '').trim(); continue; }
+    if (line.startsWith('Bio:'))         { profile.bio       = line.replace('Bio:', '').trim(); continue; }
+    if (line.startsWith('RECENT POSTS:')){ inPosts = true; continue; }
+    if (inPosts && line.startsWith('Post ')) {
+      const m = line.match(/Post \d+: "(.*?)" \| Likes: ([\d,]+) \| Comments: ([\d,]+)/);
+      if (m) posts.push({ caption: m[1], likes: parseInt(m[2].replace(/,/g, '')), comments: parseInt(m[3].replace(/,/g, '')) });
+    }
+  }
+
+  if (!profile.username && posts.length === 0) return null;
+  return { profile, posts };
+}
+
+// ── Website tab ───────────────────────────────────────────────
+function WebsiteTab({ screenshot, websiteUrl, evidenceQuotes }) {
+  return (
+    <div className={styles.websiteTab}>
+      <BrowserMockup screenshotUrl={screenshot} url={websiteUrl} />
+      {evidenceQuotes && evidenceQuotes.length > 0 && (
+        <div className={styles.evQuoteList}>
+          {evidenceQuotes.map((ev, i) => {
+            const isNeg = ev.sentiment === 'negative';
+            const accent = isNeg ? 'var(--bs-orange)' : 'var(--bs-teal)';
+            const badgeBg = isNeg ? 'rgba(232,98,42,0.12)' : 'rgba(46,196,160,0.12)';
+            return (
+              <div key={i} className={styles.evItem}>
+                <div className={styles.evItemAccent} style={{ background: accent }} />
+                <div className={styles.evItemBody}>
+                  <div className={styles.evItemMeta}>
+                    <span className={styles.evSourceBadge} style={{ background: badgeBg, color: accent }}>
+                      {ev.source}
+                    </span>
+                    <span className={styles.evSentimentLabel} style={{ color: accent }}>
+                      {isNeg ? '↓ Affecting score' : '↑ Supporting score'}
+                    </span>
+                  </div>
+                  <p className={styles.evItemQuote}>&ldquo;{ev.quote}&rdquo;</p>
+                  <p className={styles.evItemObs}>{ev.observation}</p>
+                  {ev.framework_reference && (
+                    <p className={styles.evItemFramework}>Impacts: {ev.framework_reference}</p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Instagram tab ─────────────────────────────────────────────
+function InstagramTab({ rawInstagram }) {
+  const data = parseInstagram(rawInstagram);
+
+  if (!data) {
+    return (
+      <div className={styles.emptyTab}>
+        <AtSign size={32} style={{ color: 'var(--bs-text-tertiary)', marginBottom: 12 }} />
+        <p className={styles.emptyTabText}>No Instagram data was scraped for this brand.</p>
+        <p className={styles.emptyTabSub}>Add an Instagram handle when running the audit to analyse social content.</p>
+      </div>
+    );
+  }
+
+  const { profile, posts } = data;
+  const topPosts = [...posts].sort((a, b) => b.likes - a.likes).slice(0, 3);
+
+  return (
+    <div className={styles.igTab}>
+      {/* Profile bar */}
+      <div className={styles.igProfile}>
+        <div className={styles.igAvatar}>
+          <AtSign size={20} style={{ color: 'var(--bs-violet)' }} />
+        </div>
+        <div className={styles.igProfileInfo}>
+          <span className={styles.igHandle}>@{profile.username || 'unknown'}</span>
+          <span className={styles.igFollowers}>{profile.followers} followers</span>
+        </div>
+        {profile.bio && (
+          <p className={styles.igBio}>{profile.bio}</p>
+        )}
+      </div>
+
+      {/* Top posts */}
+      {topPosts.length > 0 && (
+        <div className={styles.igTopPostsWrap}>
+          <p className={styles.igSectionLabel}>Top posts by engagement</p>
+          <div className={styles.igTopPosts}>
+            {topPosts.map((p, i) => (
+              <div key={i} className={styles.igPostCard}>
+                <div className={styles.igPostRank}>{i + 1}</div>
+                <p className={styles.igPostCaption}>{p.caption.slice(0, 160)}{p.caption.length > 160 ? '…' : ''}</p>
+                <div className={styles.igPostStats}>
+                  <span className={styles.igStat}>♥ {p.likes.toLocaleString()}</span>
+                  <span className={styles.igStat}>💬 {p.comments.toLocaleString()}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* All posts */}
+      {posts.length > 0 && (
+        <div className={styles.igAllPostsWrap}>
+          <p className={styles.igSectionLabel}>All {posts.length} posts</p>
+          <div className={styles.igAllPosts}>
+            {posts.map((p, i) => (
+              <div key={i} className={styles.igPostRow}>
+                <span className={styles.igPostNum}>{i + 1}</span>
+                <p className={styles.igPostRowCaption}>{p.caption.slice(0, 120)}{p.caption.length > 120 ? '…' : ''}</p>
+                <span className={styles.igPostRowLikes}>♥ {p.likes.toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Competitors tab ───────────────────────────────────────────
+function CompetitorsTab({ comp1Screenshot, comp2Screenshot, comp1Name, comp2Name }) {
+  const hasComp1 = comp1Name || comp1Screenshot;
+  const hasComp2 = comp2Name || comp2Screenshot;
+
+  if (!hasComp1 && !hasComp2) {
+    return (
+      <div className={styles.emptyTab}>
+        <Target size={32} style={{ color: 'var(--bs-text-tertiary)', marginBottom: 12 }} />
+        <p className={styles.emptyTabText}>No competitor data was provided.</p>
+        <p className={styles.emptyTabSub}>Add competitor URLs when running the audit to enable side-by-side comparison.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.competitorsTab}>
+      {hasComp1 && (
+        <div className={styles.compPanel}>
+          {comp1Name && <p className={styles.compLabel}>{comp1Name}</p>}
+          <BrowserMockup screenshotUrl={comp1Screenshot} url={comp1Name?.includes('.') ? `https://${comp1Name.replace(/^https?:\/\//, '')}` : null} />
+        </div>
+      )}
+      {hasComp2 && (
+        <div className={styles.compPanel}>
+          {comp2Name && <p className={styles.compLabel}>{comp2Name}</p>}
+          <BrowserMockup screenshotUrl={comp2Screenshot} url={comp2Name?.includes('.') ? `https://${comp2Name.replace(/^https?:\/\//, '')}` : null} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main component ─────────────────────────────────────────────
+export default function EvidenceSection({ scrapedData, evidenceQuotes }) {
+  const [activeTab, setActiveTab] = useState('website');
+
+  const screenshots    = scrapedData?.screenshots || {};
+  const rawInstagram   = scrapedData?.scraped_instagram || '';
+  const websiteUrl     = scrapedData?.websiteUrl || '';
+  const comp1Name      = scrapedData?.comp1Name || '';
+  const comp2Name      = scrapedData?.comp2Name || '';
+
+  return (
+    <div className={styles.wrap}>
+      {/* Tab bar */}
+      <div className={styles.tabBar}>
+        {TABS.map(tab => {
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              className={`${styles.tabBtn} ${activeTab === tab.id ? styles.tabBtnActive : ''}`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              <Icon size={14} style={{ marginRight: 6, flexShrink: 0 }} />
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Tab content */}
+      <div className={styles.tabContent}>
+        {activeTab === 'website' && (
+          <WebsiteTab
+            screenshot={screenshots.homepage}
+            websiteUrl={websiteUrl}
+            evidenceQuotes={evidenceQuotes}
+          />
+        )}
+        {activeTab === 'instagram' && (
+          <InstagramTab rawInstagram={rawInstagram} />
+        )}
+        {activeTab === 'competitors' && (
+          <CompetitorsTab
+            comp1Screenshot={screenshots.comp1}
+            comp2Screenshot={screenshots.comp2}
+            comp1Name={comp1Name}
+            comp2Name={comp2Name}
+          />
+        )}
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,444 @@
+/* ── Wrapper ─────────────────────────────────────────────────── */
+.wrap {
+  width: 100%;
+}
+
+/* ── Tab bar ─────────────────────────────────────────────────── */
+.tabBar {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 28px;
+}
+
+.tabBtn {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 18px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--bs-text-tertiary);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.tabBtn:hover {
+  color: var(--bs-text-secondary);
+}
+
+.tabBtnActive {
+  color: var(--bs-text-primary);
+  border-bottom-color: var(--bs-violet);
+}
+
+/* ── Tab content ─────────────────────────────────────────────── */
+.tabContent {
+  width: 100%;
+}
+
+/* ── Browser mockup ──────────────────────────────────────────── */
+.browser {
+  width: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bs-card);
+}
+
+.browserChrome {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.browserDots {
+  display: flex;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.browserDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: block;
+}
+
+.browserBar {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 5px;
+  padding: 4px 10px;
+  min-width: 0;
+}
+
+.browserUrl {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--bs-text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.browserExternal {
+  display: flex;
+  align-items: center;
+  color: var(--bs-text-tertiary);
+  transition: color 0.15s;
+  flex-shrink: 0;
+  text-decoration: none;
+}
+
+.browserExternal:hover {
+  color: var(--bs-text-secondary);
+}
+
+.browserScreen {
+  width: 100%;
+  max-height: 480px;
+  overflow: hidden;
+  position: relative;
+  background: #fff;
+}
+
+.screenshotImg {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+  object-position: top;
+}
+
+.screenshotEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 56px 24px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.screenshotEmptyText {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--bs-text-tertiary);
+  margin: 0;
+}
+
+/* ── Website tab ─────────────────────────────────────────────── */
+.websiteTab {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.evQuoteList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.evItem {
+  display: flex;
+  gap: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bs-card);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.evItemAccent {
+  width: 3px;
+  flex-shrink: 0;
+  border-radius: 0;
+}
+
+.evItemBody {
+  flex: 1;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.evItemMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.evSourceBadge {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.evSentimentLabel {
+  font-family: var(--font-ui);
+  font-size: 11px;
+}
+
+.evItemQuote {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--bs-text-primary);
+  font-style: italic;
+  margin: 0;
+  line-height: 1.55;
+}
+
+.evItemObs {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--bs-text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.evItemFramework {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--bs-text-tertiary);
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ── Empty tab state ─────────────────────────────────────────── */
+.emptyTab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 24px;
+  text-align: center;
+}
+
+.emptyTabText {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: var(--bs-text-secondary);
+  margin: 0 0 6px;
+}
+
+.emptyTabSub {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--bs-text-tertiary);
+  margin: 0;
+  max-width: 360px;
+}
+
+/* ── Instagram tab ───────────────────────────────────────────── */
+.igTab {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.igProfile {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  background: var(--bs-card);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  flex-wrap: wrap;
+}
+
+.igAvatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(124, 92, 191, 0.15);
+  border: 1px solid rgba(124, 92, 191, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.igProfileInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.igHandle {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--bs-text-primary);
+}
+
+.igFollowers {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--bs-text-tertiary);
+}
+
+.igBio {
+  flex: 1;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--bs-text-secondary);
+  margin: 0;
+  padding-left: 14px;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  min-width: 180px;
+}
+
+.igSectionLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--bs-text-tertiary);
+  margin: 0 0 12px;
+}
+
+.igTopPostsWrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.igTopPosts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.igPostCard {
+  background: var(--bs-card);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+}
+
+.igPostRank {
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: 700;
+  color: rgba(124, 92, 191, 0.2);
+  line-height: 1;
+}
+
+.igPostCaption {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--bs-text-secondary);
+  margin: 0;
+  line-height: 1.55;
+  flex: 1;
+}
+
+.igPostStats {
+  display: flex;
+  gap: 12px;
+}
+
+.igStat {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--bs-text-tertiary);
+}
+
+.igAllPostsWrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.igAllPosts {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.igPostRow {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.igPostRow:last-child {
+  border-bottom: none;
+}
+
+.igPostNum {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--bs-text-tertiary);
+  flex-shrink: 0;
+  width: 20px;
+}
+
+.igPostRowCaption {
+  flex: 1;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--bs-text-secondary);
+  margin: 0;
+  line-height: 1.45;
+  min-width: 0;
+}
+
+.igPostRowLikes {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--bs-text-tertiary);
+  flex-shrink: 0;
+}
+
+/* ── Competitors tab ─────────────────────────────────────────── */
+.competitorsTab {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 680px) {
+  .competitorsTab {
+    grid-template-columns: 1fr;
+  }
+}
+
+.compPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.compLabel {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--bs-text-secondary);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

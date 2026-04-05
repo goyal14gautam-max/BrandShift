@@ -10,6 +10,7 @@ import {
 import { useInView } from '@/hooks/useInView';
 import BrandRadarChart from '@/components/BrandRadarChart';
 import Tooltip from '@/components/Tooltip';
+import EvidenceSection from '@/components/EvidenceSection';
 import styles from './results.module.css';
 
 // ── Dimension config (5 real dims) ─────────────────────────────
@@ -155,6 +156,7 @@ export default function Results() {
   const router = useRouter();
   const [scoreData, setScoreData]   = useState(null);
   const [intakeData, setIntakeData] = useState({});
+  const [scrapedData, setScrapedData] = useState(null);
   const [toastVisible, setToastVisible] = useState(false);
   const [expandedDim, setExpandedDim]   = useState(null);
 
@@ -164,6 +166,8 @@ export default function Results() {
     setScoreData(JSON.parse(raw));
     const intake = localStorage.getItem('brandshift_intake');
     if (intake) setIntakeData(JSON.parse(intake));
+    const scraped = localStorage.getItem('brandshift_scraped');
+    if (scraped) setScrapedData(JSON.parse(scraped));
   }, [router]);
 
   if (!scoreData) return null;
@@ -529,40 +533,12 @@ export default function Results() {
           </div>
         </section>
 
-        {/* ══ 5 — Evidence Snippets ══ */}
-        {evidence.length > 0 && (
-          <section className={styles.sectionSpaced}>
-            <h2 className={styles.sectionTitle}>The evidence</h2>
-            <p className={styles.sectionSub}>Everything we found, pulled directly from your brand's actual content</p>
-            <div className={styles.evidenceGrid}>
-              {evidence.map((ev, i) => {
-                const isNeg = ev.sentiment === 'negative';
-                const accentColor = isNeg ? 'var(--bs-orange)' : 'var(--bs-teal)';
-                const badgeBg     = isNeg ? 'rgba(232,98,42,0.12)'  : 'rgba(46,196,160,0.12)';
-                return (
-                  <FadeUp key={i} delay={i * 80}>
-                    <div className={styles.evCard}>
-                      <div className={styles.evTopAccent} style={{ background: accentColor }} />
-                      <div className={styles.evCardHeader}>
-                        <span className={styles.evSourceBadge} style={{ background: badgeBg, color: accentColor }}>
-                          {ev.source}
-                        </span>
-                        <span className={styles.evSentimentLabel} style={{ color: accentColor }}>
-                          {isNeg ? '↓ Affecting score' : '↑ Supporting score'}
-                        </span>
-                      </div>
-                      <p className={styles.evQuote}>&ldquo;{ev.quote}&rdquo;</p>
-                      <p className={styles.evObservation}>{truncate(ev.observation, 160)}</p>
-                      {ev.framework_reference && (
-                        <p className={styles.evFramework}>Impacts: {ev.framework_reference}</p>
-                      )}
-                    </div>
-                  </FadeUp>
-                );
-              })}
-            </div>
-          </section>
-        )}
+        {/* ══ 5 — Evidence ══ */}
+        <section className={styles.sectionSpaced}>
+          <h2 className={styles.sectionTitle}>The evidence</h2>
+          <p className={styles.sectionSub}>Everything we found, pulled directly from your brand's actual content</p>
+          <EvidenceSection scrapedData={scrapedData} evidenceQuotes={evidence} />
+        </section>
 
         {/* ══ 6 — CTA ══ */}
         <section className={styles.ctaSection}>

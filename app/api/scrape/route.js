@@ -57,23 +57,41 @@ async function firecrawlScrape(url, options = {}) {
   }
 }
 
+// ── Firecrawl helper with screenshot ────────────────────────────
+async function firecrawlScrapeWithScreenshot(url, options = {}) {
+  try {
+    const result = await firecrawl.scrapeUrl(url, {
+      formats: ['markdown', 'screenshot'],
+      onlyMainContent: true,
+      ...options,
+    });
+    return {
+      markdown:   result?.markdown   || result?.data?.markdown   || '',
+      screenshot: result?.screenshot || result?.data?.screenshot || '',
+    };
+  } catch (err) {
+    console.error(`Firecrawl scrape+screenshot failed for ${url}:`, err.message);
+    return { markdown: '', screenshot: '' };
+  }
+}
+
 // ── Named source scrapers ────────────────────────────────────────
 async function scrapeHomepage(url) {
-  if (!url) return '';
+  if (!url) return { content: '', screenshot: '' };
   try {
-    const main = await firecrawlScrape(url, { onlyMainContent: true });
+    const { markdown: main, screenshot } = await firecrawlScrapeWithScreenshot(url, { onlyMainContent: true });
     if (main && main.length >= 500) {
       console.log('Homepage: onlyMainContent, length', main.length);
-      return cleanMarkdown(main).slice(0, 4000);
+      return { content: cleanMarkdown(main).slice(0, 4000), screenshot };
     }
     // Too sparse — try without onlyMainContent
-    const full = await firecrawlScrape(url, { onlyMainContent: false });
-    const result = (full && full.length > (main || '').length) ? full : (main || '');
-    console.log('Homepage: full page fallback, length', result.length);
-    return cleanMarkdown(result).slice(0, 4000);
+    const { markdown: full, screenshot: fullShot } = await firecrawlScrapeWithScreenshot(url, { onlyMainContent: false });
+    const bestText = (full && full.length > (main || '').length) ? full : (main || '');
+    console.log('Homepage: full page fallback, length', bestText.length);
+    return { content: cleanMarkdown(bestText).slice(0, 4000), screenshot: fullShot || screenshot };
   } catch (err) {
     console.error('Homepage failed:', err.message);
-    return '';
+    return { content: '', screenshot: '' };
   }
 }
 
@@ -113,14 +131,14 @@ async function scrapeBlog(baseUrl, homepageFingerprint = '') {
 }
 
 async function scrapeCompetitor(url) {
-  if (!url || url.trim() === '') return '';
+  if (!url || url.trim() === '') return { content: '', screenshot: '' };
   // extractHomepageUrl already applied before calling this
   try {
-    const content = await firecrawlScrape(url);
-    return cleanMarkdown(content).slice(0, 3000);
+    const { markdown, screenshot } = await firecrawlScrapeWithScreenshot(url);
+    return { content: cleanMarkdown(markdown).slice(0, 3000), screenshot };
   } catch (err) {
     console.error('Competitor failed:', url, err.message);
-    return '';
+    return { content: '', screenshot: '' };
   }
 }
 
@@ -243,8 +261,10 @@ export async function POST(request) {
   console.log('Competitor URLs after cleaning:', { comp1: cleanComp1Url, comp2: cleanComp2Url });
 
   // ── Homepage first (fingerprint needed for about/blog) ──────────
-  const homepageContent      = await withTimeout(scrapeHomepage(cleanWebsiteUrl), 15000);
-  const homepageFingerprint  = homepageContent.slice(0, 150).trim();
+  const homepageResult      = await withTimeout(scrapeHomepage(cleanWebsiteUrl), 15000, { content: '', screenshot: '' });
+  const homepageContent     = homepageResult.content;
+  const homepageScreenshot  = homepageResult.screenshot;
+  const homepageFingerprint = homepageContent.slice(0, 150).trim();
 
   console.log('Homepage done, length:', homepageContent.length, '— starting parallel scrapes');
 
@@ -253,21 +273,21 @@ export async function POST(request) {
     aboutContent,
     blogContent,
     instagramContent,
-    comp1Content,
-    comp2Content,
+    comp1Result,
+    comp2Result,
   ] = await Promise.all([
     withTimeout(scrapeAbout(cleanWebsiteUrl, homepageFingerprint), 10000),
     withTimeout(scrapeBlog(cleanWebsiteUrl, homepageFingerprint),  10000),
     withTimeout(scrapeInstagram(instagramHandle),                   40000),
-    withTimeout(scrapeCompetitor(cleanComp1Url),                   10000),
-    withTimeout(scrapeCompetitor(cleanComp2Url),                   10000),
+    withTimeout(scrapeCompetitor(cleanComp1Url), 10000, { content: '', screenshot: '' }),
+    withTimeout(scrapeCompetitor(cleanComp2Url), 10000, { content: '', screenshot: '' }),
   ]);
 
   const scrapedHomepage  = homepageContent;
   const scrapedAbout     = aboutContent;
   const scrapedBlog      = blogContent;
-  const scrapedComp1     = comp1Content;
-  const scrapedComp2     = comp2Content;
+  const scrapedComp1     = comp1Result.content;
+  const scrapedComp2     = comp2Result.content;
   const scrapedInstagram = cleanMarkdown(instagramContent).slice(0, 3000);
 
   console.log('=== SCRAPE RESULTS ===');
@@ -288,5 +308,10 @@ export async function POST(request) {
     scraped_comp1:     scrapedComp1,
     scraped_comp2:     scrapedComp2,
     scraped_instagram: scrapedInstagram + instagramSignals,
+    screenshots: {
+      homepage: homepageScreenshot,
+      comp1:    comp1Result.screenshot,
+      comp2:    comp2Result.screenshot,
+    },
   });
 }
