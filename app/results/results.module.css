@@ -52,15 +52,32 @@
 
 /* ── Section spacing ────────────────────────────────────────── */
 .sectionSpaced {
-  padding: 60px 0 0;
+  padding-top: 72px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
 }
 
+/* Transition from hero to section 2 */
+.heroTransition {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 48px;
+}
+
+/* Section-level heading (28px) */
 .sectionTitle {
   font-family: var(--font-headline);
-  font-size: 26px;
+  font-size: 28px;
   font-weight: 400;
   color: var(--bs-text-primary);
   margin-bottom: 6px;
+}
+
+/* Sub-section heading within a grid panel (20px) */
+.sectionTitleSm {
+  font-family: var(--font-headline);
+  font-size: 20px;
+  font-weight: 400;
+  color: var(--bs-text-primary);
+  margin-bottom: 4px;
 }
 
 .sectionSub {
@@ -68,6 +85,41 @@
   font-size: 14px;
   color: var(--bs-text-secondary);
   margin-bottom: 28px;
+}
+
+/* ── Score simulation insight card ──────────────────────────── */
+.simInsightCard {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(46, 196, 160, 0.06);
+  border: 1px solid rgba(46, 196, 160, 0.15);
+  border-radius: var(--radius);
+  padding: 20px 28px;
+  margin-bottom: 40px;
+}
+
+.simInsightMain {
+  font-family: var(--font-ui);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--bs-text-primary);
+  line-height: 1.4;
+}
+
+.simInsightSub {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--bs-text-secondary);
+  margin-top: 4px;
+}
+
+.simInsightDelta {
+  font-family: var(--font-mono);
+  font-size: 32px;
+  color: var(--bs-teal);
+  font-weight: 400;
+  flex-shrink: 0;
 }
 
 /* ── 1 — Score Hero ─────────────────────────────────────────── */
@@ -212,7 +264,6 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 40px;
-  padding: 60px 0 0;
   align-items: start;
 }
 
@@ -698,13 +749,6 @@
 .ctaSection {
   padding: 80px 0 0;
   text-align: center;
-}
-
-.simText {
-  font-family: var(--font-mono);
-  font-size: 14px;
-  color: var(--bs-teal);
-  margin-bottom: 20px;
 }
 
 .ctaHeading {

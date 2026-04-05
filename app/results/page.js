@@ -38,6 +38,14 @@ const FRAMEWORK_TOOLTIPS = {
 
 const KELLER_TOOLTIP = 'This measures how deeply customers connect with your brand — from basic awareness all the way to loyal advocacy. Most Indian D2C brands are at Level 2.';
 
+const DIM_LABELS = {
+  visual_identity:        'Visual Identity',
+  tone_voice:             'Brand Voice',
+  trend_relevance:        'Trend Relevance',
+  competitor_positioning: 'Competitor Gap',
+  audience_alignment:     'Audience Fit',
+};
+
 // ── Helpers ────────────────────────────────────────────────────
 function scoreColor(s) {
   if (s >= 65) return 'var(--bs-teal)';
@@ -172,7 +180,11 @@ export default function Results() {
     scoreData.brand_type === 'content-first'  ? 'Content First' : 'Balanced';
 
   const highestDimScore = Math.max(...DIM_CONFIG.map(d => dims[d.key]?.score || overall));
-  const lowestDim = [...DIM_CONFIG].sort((a, b) => (dims[a.key]?.score ?? overall) - (dims[b.key]?.score ?? overall))[0];
+  const sortedByScore   = [...DIM_CONFIG].sort((a, b) => (dims[a.key]?.score ?? overall) - (dims[b.key]?.score ?? overall));
+  const lowestDim       = sortedByScore[0];
+  const bottom2Dims     = sortedByScore.slice(0, 2);
+  const gap1Name        = DIM_LABELS[bottom2Dims[0]?.key] || '';
+  const gap2Name        = DIM_LABELS[bottom2Dims[1]?.key] || '';
   const nextLevelAction = dims[lowestDim?.key]?.improvement_action || '';
 
   function handleShare() {
@@ -201,7 +213,7 @@ export default function Results() {
 
       <div className={styles.content}>
 
-        {/* ── 1 — Score Hero ── */}
+        {/* ══ 1 — Score Hero ══ */}
         <section className={styles.heroGrid}>
 
           {/* Left: ring + verdict */}
@@ -287,119 +299,181 @@ export default function Results() {
           </div>
         </section>
 
-        {/* ── 2 — Radar + Dimensions ── */}
-        <section className={styles.radarSection}>
+        {/* ══ 2 — Score Simulation + Brand Maturity Path ══ */}
+        <section className={styles.heroTransition}>
 
-          {/* Left: Radar chart + weight bars */}
-          <div className={styles.radarLeft}>
-            <h2 className={styles.sectionTitle}>Brand shape</h2>
-            <p className={styles.sectionSub}>Your strengths and gaps at a glance</p>
-            <BrandRadarChart
-              brandData={scoreData.dimensions}
-              brandName={intakeData.brandName || 'Your Brand'}
-              competitorName={scoreData.competitor_scores?.name || null}
-              competitorData={scoreData.competitor_scores?.dimensions || null}
-              dataConfidence={scoreData.data_confidence}
-            />
-            <div className={styles.weightSection}>
-              <p className={styles.weightTitle}>How we weighted this analysis</p>
-              {channels.map(ch => (
-                <div key={ch.label} className={styles.weightRow}>
-                  <span className={styles.weightLabel}>{ch.label}</span>
-                  <div className={styles.weightBarWrap}>
-                    <div className={styles.weightBarFill} style={{ width: `${ch.value}%` }} />
-                  </div>
-                  <span className={styles.weightValue}>{ch.value}%</span>
-                </div>
-              ))}
+          {/* Insight card */}
+          {sim.improvement > 0 && (
+            <div className={styles.simInsightCard}>
+              <TrendingUp size={24} style={{ color: 'var(--bs-teal)', flexShrink: 0 }} />
+              <div style={{ flex: 1 }}>
+                <p className={styles.simInsightMain}>
+                  Fixing your top 2 gaps could push your score from {overall} to {sim.simulated}
+                </p>
+                {gap1Name && gap2Name && (
+                  <p className={styles.simInsightSub}>
+                    {gap1Name} and {gap2Name} are your biggest opportunities
+                  </p>
+                )}
+              </div>
+              <span className={styles.simInsightDelta}>+{sim.improvement}</span>
             </div>
-          </div>
+          )}
 
-          {/* Right: Condensed dimension cards */}
-          <div className={styles.radarRight}>
-            <h2 className={styles.sectionTitle}>Dimension breakdown</h2>
-            <p className={styles.sectionSub}>What's driving your score</p>
-            <div className={styles.dimStack}>
-              {DIM_CONFIG.map((dim, i) => {
-                const s = dims[dim.key]?.score ?? overall;
-                const col = scoreColor(s);
-                const Icon = dim.icon;
-                const justification = dims[dim.key]?.justification || '';
-                const evidenceQ    = dims[dim.key]?.evidence_quote || '';
-                const improvement  = dims[dim.key]?.improvement_action || '';
-                const voiceWords   = dim.key === 'tone_voice' ? (dims.tone_voice?.voice_in_3_words || []) : [];
-                const isExpanded   = expandedDim === dim.key;
-
-                return (
-                  <FadeUp key={dim.key} delay={i * 60}>
-                    <div
-                      className={styles.dimCardSmall}
-                      onClick={() => setExpandedDim(prev => prev === dim.key ? null : dim.key)}
-                    >
-                      {/* Row 1: name + score */}
-                      <div className={styles.dimSmallHeader}>
-                        <div className={styles.dimSmallLeft}>
-                          <Icon size={14} style={{ color: 'var(--bs-violet)', flexShrink: 0 }} />
-                          <span className={styles.dimSmallName}>{dim.label}</span>
-                          <Tooltip content={FRAMEWORK_TOOLTIPS[dim.key]} />
+          {/* Brand maturity path */}
+          {kellerLevel && (
+            <>
+              <div className={styles.maturityWrap}>
+                <div className={styles.maturityLine}>
+                  <div className={styles.maturityLineActive}
+                    style={{ width: `${((kellerLevel - 1) / 3) * 100}%` }} />
+                </div>
+                <div className={styles.maturityNodes}>
+                  {KELLER_LEVELS.map((lvl) => {
+                    const achieved  = lvl.level < kellerLevel;
+                    const current   = lvl.level === kellerLevel;
+                    const nodeClass = achieved ? styles.matNodeAchieved : current ? styles.matNodeCurrent : styles.matNodeFuture;
+                    const textClass = achieved || current ? styles.matLabelActive : styles.matLabelFuture;
+                    return (
+                      <div key={lvl.level} className={styles.matNodeWrap}>
+                        <div className={`${styles.matNode} ${nodeClass}`}>
+                          {achieved
+                            ? <Check size={16} />
+                            : <span style={{ fontFamily: 'var(--font-mono)', fontSize: 14 }}>{lvl.level}</span>}
                         </div>
-                        <div className={styles.dimSmallRight}>
-                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 20, color: col }}>{s}</span>
-                          {isExpanded
-                            ? <ChevronUp size={13} style={{ color: 'var(--bs-text-tertiary)' }} />
-                            : <ChevronDown size={13} style={{ color: 'var(--bs-text-tertiary)' }} />}
-                        </div>
+                        <p className={`${styles.matLabel} ${textClass}`}>{lvl.name}</p>
+                        <p className={styles.matDesc}>{lvl.desc}</p>
                       </div>
+                    );
+                  })}
+                </div>
+              </div>
 
-                      {/* Row 2: bar */}
-                      <AnimatedBar score={s} color={col} delay={i * 80} />
+              <div className={styles.maturityCard}>
+                <span className={styles.matCardLabel}>You are here:</span>
+                <h3 className={styles.matCardTitle}>{kellerInfo?.name}</h3>
+                {scoreData.keller_level_explanation && (
+                  <p className={styles.matCardText}>{truncate(scoreData.keller_level_explanation, 320)}</p>
+                )}
+                {kellerLevel < 4 && nextLevelAction && (
+                  <>
+                    <div className={styles.matDivider} />
+                    <span className={styles.matCardLabel}>To reach Level {kellerLevel + 1}:</span>
+                    <p className={styles.matNextText}>{nextLevelAction}</p>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+        </section>
 
-                      {/* Row 3: justification (truncated) */}
-                      {justification && (
-                        <p className={styles.dimSmallJust}>{truncate(justification, 160)}</p>
-                      )}
+        {/* ══ 3 — Radar + Dimensions ══ */}
+        <section className={styles.sectionSpaced}>
+          <h2 className={styles.sectionTitle}>Where the gaps are</h2>
+          <p className={styles.sectionSub}>Your brand scored across 5 dimensions — here's what's driving the number</p>
 
-                      {/* Row 4: evidence quote (one line) */}
-                      {evidenceQ && (
-                        <p className={styles.dimSmallEvidence}>{evidenceQ}</p>
-                      )}
+          <div className={styles.radarSection}>
 
-                      {/* Row 5: improvement pill */}
-                      {improvement && (
-                        <span className={styles.improvePill}>
-                          <ArrowUp size={10} style={{ marginRight: 4 }} />
-                          {truncate(improvement, 90)}
-                        </span>
-                      )}
+            {/* Left: Radar chart + weight bars */}
+            <div className={styles.radarLeft}>
+              <h2 className={styles.sectionTitleSm}>Brand shape</h2>
+              <p className={styles.sectionSub}>Your strengths and gaps at a glance</p>
+              <BrandRadarChart
+                brandData={scoreData.dimensions}
+                brandName={intakeData.brandName || 'Your Brand'}
+                competitorName={scoreData.competitor_scores?.name || null}
+                competitorData={scoreData.competitor_scores?.dimensions || null}
+                dataConfidence={scoreData.data_confidence}
+              />
+              <div className={styles.weightSection}>
+                <p className={styles.weightTitle}>How we weighted this analysis</p>
+                {channels.map(ch => (
+                  <div key={ch.label} className={styles.weightRow}>
+                    <span className={styles.weightLabel}>{ch.label}</span>
+                    <div className={styles.weightBarWrap}>
+                      <div className={styles.weightBarFill} style={{ width: `${ch.value}%` }} />
+                    </div>
+                    <span className={styles.weightValue}>{ch.value}%</span>
+                  </div>
+                ))}
+              </div>
+            </div>
 
-                      {/* Expandable content */}
-                      <div className={`${styles.dimExpand} ${isExpanded ? styles.dimExpandOpen : ''}`}>
+            {/* Right: Condensed dimension cards */}
+            <div className={styles.radarRight}>
+              <h2 className={styles.sectionTitleSm}>Dimension breakdown</h2>
+              <p className={styles.sectionSub}>What's driving your score</p>
+              <div className={styles.dimStack}>
+                {DIM_CONFIG.map((dim, i) => {
+                  const s = dims[dim.key]?.score ?? overall;
+                  const col = scoreColor(s);
+                  const Icon = dim.icon;
+                  const justification = dims[dim.key]?.justification || '';
+                  const evidenceQ    = dims[dim.key]?.evidence_quote || '';
+                  const improvement  = dims[dim.key]?.improvement_action || '';
+                  const voiceWords   = dim.key === 'tone_voice' ? (dims.tone_voice?.voice_in_3_words || []) : [];
+                  const isExpanded   = expandedDim === dim.key;
+
+                  return (
+                    <FadeUp key={dim.key} delay={i * 60}>
+                      <div
+                        className={styles.dimCardSmall}
+                        onClick={() => setExpandedDim(prev => prev === dim.key ? null : dim.key)}
+                      >
+                        <div className={styles.dimSmallHeader}>
+                          <div className={styles.dimSmallLeft}>
+                            <Icon size={14} style={{ color: 'var(--bs-violet)', flexShrink: 0 }} />
+                            <span className={styles.dimSmallName}>{dim.label}</span>
+                            <Tooltip content={FRAMEWORK_TOOLTIPS[dim.key]} />
+                          </div>
+                          <div className={styles.dimSmallRight}>
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 20, color: col }}>{s}</span>
+                            {isExpanded
+                              ? <ChevronUp size={13} style={{ color: 'var(--bs-text-tertiary)' }} />
+                              : <ChevronDown size={13} style={{ color: 'var(--bs-text-tertiary)' }} />}
+                          </div>
+                        </div>
+                        <AnimatedBar score={s} color={col} delay={i * 80} />
                         {justification && (
-                          <p className={styles.dimExpandJust}>{justification}</p>
+                          <p className={styles.dimSmallJust}>{truncate(justification, 160)}</p>
                         )}
                         {evidenceQ && (
-                          <blockquote className={styles.dimExpandQuote}>{evidenceQ}</blockquote>
+                          <p className={styles.dimSmallEvidence}>{evidenceQ}</p>
                         )}
-                        {voiceWords.length > 0 && (
-                          <div className={styles.voicePills}>
-                            {voiceWords.map((w, wi) => (
-                              <span key={wi} className={styles.voicePill}>{w}</span>
-                            ))}
-                          </div>
+                        {improvement && (
+                          <span className={styles.improvePill}>
+                            <ArrowUp size={10} style={{ marginRight: 4 }} />
+                            {truncate(improvement, 90)}
+                          </span>
                         )}
+                        <div className={`${styles.dimExpand} ${isExpanded ? styles.dimExpandOpen : ''}`}>
+                          {justification && (
+                            <p className={styles.dimExpandJust}>{justification}</p>
+                          )}
+                          {evidenceQ && (
+                            <blockquote className={styles.dimExpandQuote}>{evidenceQ}</blockquote>
+                          )}
+                          {voiceWords.length > 0 && (
+                            <div className={styles.voicePills}>
+                              {voiceWords.map((w, wi) => (
+                                <span key={wi} className={styles.voicePill}>{w}</span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
-
-                    </div>
-                  </FadeUp>
-                );
-              })}
+                    </FadeUp>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </section>
 
-        {/* ── 3 — Key findings ── */}
+        {/* ══ 4 — Key Findings ══ */}
         <section className={styles.sectionSpaced}>
           <h2 className={styles.sectionTitle}>Key findings</h2>
+          <p className={styles.sectionSub}>The single biggest thing working for you — and against you</p>
           <div className={styles.findingsGrid}>
 
             <FadeUp>
@@ -447,11 +521,11 @@ export default function Results() {
           </div>
         </section>
 
-        {/* ── 4 — Evidence snippets ── */}
+        {/* ══ 5 — Evidence Snippets ══ */}
         {evidence.length > 0 && (
           <section className={styles.sectionSpaced}>
-            <h2 className={styles.sectionTitle}>What we found</h2>
-            <p className={styles.sectionSub}>Direct evidence from your brand's actual content</p>
+            <h2 className={styles.sectionTitle}>The evidence</h2>
+            <p className={styles.sectionSub}>Everything we found, pulled directly from your brand's actual content</p>
             <div className={styles.evidenceGrid}>
               {evidence.map((ev, i) => {
                 const isNeg = ev.sentiment === 'negative';
@@ -482,66 +556,8 @@ export default function Results() {
           </section>
         )}
 
-        {/* ── 5 — Brand maturity path ── */}
-        {kellerLevel && (
-          <section className={styles.sectionSpaced}>
-            <h2 className={styles.sectionTitle}>Your brand's growth path</h2>
-            <p className={styles.sectionSub}>Where you are and what getting to the next level looks like</p>
-
-            <div className={styles.maturityWrap}>
-              {/* Connecting line */}
-              <div className={styles.maturityLine}>
-                <div className={styles.maturityLineActive}
-                  style={{ width: `${((kellerLevel - 1) / 3) * 100}%` }} />
-              </div>
-
-              {/* Nodes */}
-              <div className={styles.maturityNodes}>
-                {KELLER_LEVELS.map((lvl) => {
-                  const achieved = lvl.level < kellerLevel;
-                  const current  = lvl.level === kellerLevel;
-                  const nodeClass = achieved ? styles.matNodeAchieved : current ? styles.matNodeCurrent : styles.matNodeFuture;
-                  const textClass = achieved || current ? styles.matLabelActive : styles.matLabelFuture;
-                  return (
-                    <div key={lvl.level} className={styles.matNodeWrap}>
-                      <div className={`${styles.matNode} ${nodeClass}`}>
-                        {achieved
-                          ? <Check size={16} />
-                          : <span style={{ fontFamily: 'var(--font-mono)', fontSize: 14 }}>{lvl.level}</span>}
-                      </div>
-                      <p className={`${styles.matLabel} ${textClass}`}>{lvl.name}</p>
-                      <p className={styles.matDesc}>{lvl.desc}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Current level card */}
-            <div className={styles.maturityCard}>
-              <span className={styles.matCardLabel}>You are here:</span>
-              <h3 className={styles.matCardTitle}>{kellerInfo?.name}</h3>
-              {scoreData.keller_level_explanation && (
-                <p className={styles.matCardText}>{truncate(scoreData.keller_level_explanation, 320)}</p>
-              )}
-              {kellerLevel < 4 && nextLevelAction && (
-                <>
-                  <div className={styles.matDivider} />
-                  <span className={styles.matCardLabel}>To reach Level {kellerLevel + 1}:</span>
-                  <p className={styles.matNextText}>{nextLevelAction}</p>
-                </>
-              )}
-            </div>
-          </section>
-        )}
-
-        {/* ── 6 — CTA ── */}
+        {/* ══ 6 — CTA ══ */}
         <section className={styles.ctaSection}>
-          {sim.improvement > 0 && (
-            <p className={styles.simText}>
-              Fixing your top 2 gaps could push your score from {overall} to ~{sim.simulated}
-            </p>
-          )}
           <h2 className={styles.ctaHeading}>Ready to close the gaps?</h2>
           <p className={styles.ctaSub}>Generate a strategic roadmap tailored to your goals</p>
           <button className={styles.ctaBtn} onClick={() => router.push('/roadmap')}>
