@@ -12,14 +12,23 @@ export default function Roadmap() {
   const [error, setError]     = useState('');
 
   useEffect(() => {
-    // If we already generated this roadmap, use cached version
-    const cached = localStorage.getItem('brandshift_roadmap');
+    // Use cached roadmap only if it belongs to the current brand
+    const cached     = localStorage.getItem('brandshift_roadmap');
+    const rawBrandNow = localStorage.getItem('brandshift_brand');
+    const currentBrand = rawBrandNow ? JSON.parse(rawBrandNow) : {};
+
     if (cached) {
-      setRoadmap(JSON.parse(cached));
-      const b = localStorage.getItem('brandshift_brand');
-      if (b) setBrand(JSON.parse(b));
-      setLoading(false);
-      return;
+      const cachedData = JSON.parse(cached);
+      const cachedBrandName = localStorage.getItem('brandshift_roadmap_brand');
+      if (cachedBrandName === currentBrand.brandName) {
+        setRoadmap(cachedData);
+        setBrand(currentBrand);
+        setLoading(false);
+        return;
+      }
+      // Different brand — clear stale cache
+      localStorage.removeItem('brandshift_roadmap');
+      localStorage.removeItem('brandshift_roadmap_brand');
     }
 
     // Otherwise generate from score data
@@ -62,6 +71,7 @@ export default function Roadmap() {
       if (data.error) throw new Error(data.error);
 
       localStorage.setItem('brandshift_roadmap', JSON.stringify(data));
+      localStorage.setItem('brandshift_roadmap_brand', brandData.brandName || intake.brandName || '');
       setRoadmap(data);
     } catch (err) {
       setError(err.message || 'Failed to generate roadmap. Please try again.');
