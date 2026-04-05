@@ -131,5 +131,44 @@ export async function POST(request) {
     parsed.evidence_quotes = tagEvidenceSentiment(parsed.evidence_quotes);
   }
 
+  // ── Competitor dimension scoring (optional) ───────────────────
+  if (comp1Name && scraped_comp1) {
+    try {
+      const competitorPrompt = `You are scoring a competitor brand for comparison purposes only.
+
+Competitor name: ${comp1Name}
+Competitor scraped content:
+${scraped_comp1.slice(0, 2000)}
+
+Main brand being compared against: ${brandName}
+Main brand scores for reference:
+${JSON.stringify(parsed.dimensions)}
+
+Score the competitor on the same 5 dimensions. Be consistent with how you scored the main brand. Use the same scale.
+
+Return ONLY this JSON, no other text:
+{
+  "visual_identity": number,
+  "tone_voice": number,
+  "trend_relevance": number,
+  "competitor_positioning": number,
+  "audience_alignment": number
+}`;
+
+      const compRes = await anthropic.messages.create({
+        model: 'claude-sonnet-4-0',
+        max_tokens: 300,
+        messages: [{ role: 'user', content: competitorPrompt }],
+      });
+      const compText = compRes.content.find(b => b.type === 'text')?.text || '';
+      const compParsed = extractJSON(compText);
+      if (compParsed) {
+        parsed.competitor_scores = { name: comp1Name, dimensions: compParsed };
+      }
+    } catch (err) {
+      console.error('Competitor scoring failed (non-critical):', err.message);
+    }
+  }
+
   return NextResponse.json({ ...parsed, brandProfileId });
 }

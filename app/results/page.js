@@ -7,6 +7,7 @@ import {
   CheckCircle, AlertCircle, Download, Share2,
 } from 'lucide-react';
 import { useInView } from '@/hooks/useInView';
+import BrandRadarChart from '@/components/BrandRadarChart';
 import styles from './results.module.css';
 
 // ── Dimension config ───────────────────────────────────────────
@@ -133,6 +134,7 @@ function Toast({ visible }) {
 export default function Results() {
   const router = useRouter();
   const [scoreData, setScoreData] = useState(null);
+  const [intakeData, setIntakeData] = useState({});
   const [toastVisible, setToastVisible] = useState(false);
   const ctaRef = useRef(null);
 
@@ -140,6 +142,8 @@ export default function Results() {
     const raw = localStorage.getItem('brandshift_score');
     if (!raw) { router.push('/audit'); return; }
     setScoreData(JSON.parse(raw));
+    const intake = localStorage.getItem('brandshift_intake');
+    if (intake) setIntakeData(JSON.parse(intake));
   }, [router]);
 
   if (!scoreData) return null;
@@ -216,7 +220,22 @@ export default function Results() {
           </div>
         </section>
 
-        {/* ── 2 — Dimension breakdown ── */}
+        {/* ── 2 — Brand Shape radar ── */}
+        <section className={styles.section}>
+          <h2 className={styles.sectionHeading}>Brand Shape</h2>
+          <p className={styles.radarSubheading}>
+            How your brand performs across each dimension — and how you compare
+          </p>
+          <BrandRadarChart
+            brandData={scoreData.dimensions}
+            brandName={intakeData.brandName || 'Your Brand'}
+            competitorName={scoreData.competitor_scores?.name || null}
+            competitorData={scoreData.competitor_scores?.dimensions || null}
+            dataConfidence={scoreData.data_confidence}
+          />
+        </section>
+
+        {/* ── 3 — Dimension breakdown ── */}
         <section className={styles.section}>
           <h2 className={styles.sectionHeading}>Dimension Breakdown</h2>
           <div className={styles.dimGrid}>
