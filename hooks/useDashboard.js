@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getBrandProfile } from '@/lib/supabase';
 
 export function useDashboard() {
   const [profile, setProfile] = useState(null);
@@ -19,10 +18,11 @@ export function useDashboard() {
           return;
         }
 
-        const data = await getBrandProfile(brandName);
+        const res = await fetch(`/api/profile?brandName=${encodeURIComponent(brandName)}`);
+        const data = await res.json();
 
-        if (!data) {
-          setError('not_found');
+        if (!res.ok) {
+          setError(data.error || 'failed');
           setIsLoading(false);
           return;
         }
