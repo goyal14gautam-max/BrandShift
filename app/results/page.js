@@ -157,8 +157,11 @@ export default function Results() {
   const [scoreData, setScoreData]   = useState(null);
   const [intakeData, setIntakeData] = useState({});
   const [scrapedData, setScrapedData] = useState(null);
-  const [toastVisible, setToastVisible] = useState(false);
-  const [expandedDim, setExpandedDim]   = useState(null);
+  const [toastVisible, setToastVisible]   = useState(false);
+  const [expandedDim, setExpandedDim]     = useState(null);
+  const [shareLoading, setShareLoading]   = useState(false);
+  const [shareModalUrl, setShareModalUrl] = useState('');
+  const [shareCopied, setShareCopied]     = useState(false);
 
   useEffect(() => {
     const raw = localStorage.getItem('brandshift_score');
@@ -203,6 +206,36 @@ export default function Results() {
     setTimeout(() => setToastVisible(false), 2000);
   }
 
+  async function handleShareReport() {
+    setShareLoading(true);
+    try {
+      const res = await fetch('/api/share/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          brandName:  intakeData.brandName || 'Brand',
+          industry:   intakeData.industry  || '',
+          scoreData,
+          intakeData,
+          createdBy:  'results_page',
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setShareModalUrl(data.shareUrl);
+        navigator.clipboard.writeText(data.shareUrl).catch(() => {});
+        setToastVisible(true);
+        setTimeout(() => setToastVisible(false), 2500);
+      }
+    } catch {}
+    finally { setShareLoading(false); }
+  }
+
+  function closeShareModal() {
+    setShareModalUrl('');
+    setShareCopied(false);
+  }
+
   const channels = [
     { label: 'Instagram',   value: cw.instagram   || 0 },
     { label: 'Website',     value: cw.website      || 0 },
@@ -216,9 +249,19 @@ export default function Results() {
       {/* ── Fixed top bar ── */}
       <header className={styles.topBar}>
         <span className={styles.topLogo}>BrandShift</span>
-        <button className={styles.topCta} onClick={() => router.push('/roadmap')}>
-          Generate Roadmap
-        </button>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <button
+            className={styles.shareBtn}
+            onClick={handleShareReport}
+            disabled={shareLoading}
+          >
+            <Share2 size={14} />
+            {shareLoading ? 'Creating link…' : 'Share Report'}
+          </button>
+          <button className={styles.topCta} onClick={() => router.push('/roadmap')}>
+            Generate Roadmap
+          </button>
+        </div>
       </header>
 
       <div className={styles.content}>
@@ -560,6 +603,39 @@ export default function Results() {
       </div>
 
       <Toast visible={toastVisible} />
+
+      {/* ── Share modal ── */}
+      {shareModalUrl && (
+        <div className={styles.modalOverlay} onClick={closeShareModal}>
+          <div className={styles.shareModal} onClick={e => e.stopPropagation()}>
+            <div className={styles.shareModalHeader}>
+              <p className={styles.shareModalTitle}>Report link created</p>
+              <button className={styles.shareModalClose} onClick={closeShareModal}>✕</button>
+            </div>
+            <div className={styles.shareModalUrlRow}>
+              <input
+                className={styles.shareModalInput}
+                value={shareModalUrl}
+                readOnly
+                onClick={e => e.target.select()}
+              />
+              <button
+                className={styles.shareModalCopy}
+                onClick={() => {
+                  navigator.clipboard.writeText(shareModalUrl).catch(() => {});
+                  setShareCopied(true);
+                  setTimeout(() => setShareCopied(false), 2000);
+                }}
+              >
+                {shareCopied ? 'Copied ✓' : 'Copy'}
+              </button>
+            </div>
+            <p className={styles.shareModalNote}>
+              This link gives anyone view-only access to this report for 30 days
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

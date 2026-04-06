@@ -847,6 +847,115 @@
   transform: translateY(0);
 }
 
+/* ── Modal overlay ── */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 24px;
+}
+
+/* ── Share button ── */
+.shareBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: var(--radius);
+  padding: 10px 20px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--bs-text-primary);
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.shareBtn:hover:not(:disabled) { border-color: rgba(255,255,255,0.3); }
+.shareBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Share modal ── */
+.shareModal {
+  background: var(--bs-card-light);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius);
+  padding: 24px;
+  width: 100%;
+  max-width: 480px;
+}
+
+.shareModalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.shareModalTitle {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--bs-text-primary);
+}
+
+.shareModalClose {
+  background: none;
+  border: none;
+  color: var(--bs-text-tertiary);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.shareModalClose:hover { color: var(--bs-text-primary); }
+
+.shareModalUrlRow {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.shareModalInput {
+  flex: 1;
+  min-width: 0;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--bs-text-secondary);
+  outline: none;
+}
+
+.shareModalCopy {
+  background: var(--bs-violet);
+  border: none;
+  border-radius: var(--radius);
+  padding: 10px 18px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  color: white;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.2s;
+}
+
+.shareModalCopy:hover { opacity: 0.88; }
+
+.shareModalNote {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--bs-text-tertiary);
+  line-height: 1.5;
+}
+
 /* ── Print styles ───────────────────────────────────────────── */
 @media print {
   .topBar { display: none !important; }
