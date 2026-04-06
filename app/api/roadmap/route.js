@@ -64,14 +64,16 @@ export async function POST(request) {
   console.log('=== ROADMAP API DONE ===');
 
   try {
+    const tasks = flattenRoadmapToTasks(parsed);
     await updateBrandProfile(brandName, {
       current_roadmap:    parsed,
       roadmap_start_date: new Date().toISOString(),
       current_week:       1,
       roadmap_direction:  direction || '',
       roadmap_tone:       toneDirection || '',
-      tasks:              flattenRoadmapToTasks(parsed),
+      tasks,
     });
+    console.log('Roadmap saved with', tasks.length, 'tasks');
   } catch (err) {
     console.error('roadmap profile update failed:', err.message);
   }

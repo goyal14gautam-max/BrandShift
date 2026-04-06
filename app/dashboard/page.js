@@ -224,7 +224,8 @@ export default function Dashboard() {
     latestBrief, isBriefNew,
     scoreHistory, latestScore, scoreDelta,
     constitutionProgress, todayQuestion,
-    markTaskDone, saveConstitutionAnswer, markBriefOpened,
+    isGeneratingBrief,
+    markTaskDone, saveConstitutionAnswer, markBriefOpened, generateBriefNow,
   } = useDashboard();
 
   const [modalOpen, setModalOpen]       = useState(false);
@@ -421,23 +422,50 @@ export default function Dashboard() {
             </div>
 
             {latestBrief ? (
-              <div className={styles.briefSections}>
-                {[
-                  { label: 'CATEGORY PULSE', text: latestBrief.category_pulse },
-                  { label: 'THIS WEEK',      text: latestBrief.priority_task  },
-                  { label: 'CONTENT IDEA',   text: latestBrief.content_ideas?.[0] },
-                ].filter(s => s.text).map((section, i) => (
-                  <div key={i} className={styles.briefSection}>
-                    <p className={styles.briefSectionLabel}>{section.label}</p>
-                    <p className={styles.briefSectionText}>{truncate(section.text, 100)}</p>
-                  </div>
-                ))}
-              </div>
+              <>
+                <div className={styles.briefSections}>
+                  {[
+                    { label: 'CATEGORY PULSE',    text: latestBrief.category_pulse           },
+                    { label: 'THIS WEEK',          text: latestBrief.priority_task            },
+                    { label: 'CONTENT IDEA',       text: latestBrief.content_ideas?.[0]       },
+                    { label: 'THIS WEEK IN INDIA', text: latestBrief.this_week_in_india       },
+                    { label: 'SCORE OBSERVATION',  text: latestBrief.score_observation        },
+                  ].filter(s => s.text).map((section, i) => (
+                    <div key={i} className={styles.briefSection}>
+                      <p className={styles.briefSectionLabel}>{section.label}</p>
+                      <p className={styles.briefSectionText}>{truncate(section.text, 100)}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className={styles.briefFooter}>
+                  {latestBrief.date && (
+                    <span className={styles.briefDate}>
+                      Generated {new Date(latestBrief.date).toLocaleDateString('en-GB', {
+                        weekday: 'long', day: 'numeric', month: 'long',
+                      })}
+                    </span>
+                  )}
+                  <button
+                    className={styles.briefRefreshBtn}
+                    onClick={generateBriefNow}
+                    disabled={isGeneratingBrief}
+                  >
+                    {isGeneratingBrief ? 'Generating…' : 'Generate fresh brief →'}
+                  </button>
+                </div>
+              </>
             ) : (
               <div className={styles.briefEmpty}>
                 <Calendar size={24} style={{ color: 'var(--bs-text-tertiary)' }} />
                 <p className={styles.briefEmptyMain}>Your Monday Brief will appear here</p>
                 <p className={styles.briefEmptySub}>Briefs are generated every Sunday night</p>
+                <button
+                  className={styles.briefGenerateBtn}
+                  onClick={generateBriefNow}
+                  disabled={isGeneratingBrief}
+                >
+                  {isGeneratingBrief ? 'Generating…' : 'Generate brief now'}
+                </button>
               </div>
             )}
           </div>

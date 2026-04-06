@@ -489,6 +489,51 @@
   color: var(--bs-text-tertiary);
 }
 
+.briefGenerateBtn {
+  margin-top: 12px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius);
+  padding: 8px 18px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--bs-text-secondary);
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.briefGenerateBtn:hover:not(:disabled) { border-color: rgba(255, 255, 255, 0.2); }
+.briefGenerateBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.briefFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.briefDate {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--bs-text-tertiary);
+}
+
+.briefRefreshBtn {
+  background: none;
+  border: none;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--bs-text-tertiary);
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.2s;
+}
+
+.briefRefreshBtn:hover:not(:disabled) { color: var(--bs-text-secondary); }
+.briefRefreshBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
 /* ── Roadmap + Constitution grid ─────────────────────────────── */
 .roadmapConstitGrid {
   display: grid;
