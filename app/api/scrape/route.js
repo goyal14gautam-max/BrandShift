@@ -3,7 +3,7 @@ import { FirecrawlAppV1 as FirecrawlApp } from '@mendable/firecrawl-js';
 import Anthropic from '@anthropic-ai/sdk';
 import { cleanMarkdown } from '@/lib/cleaner';
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 const firecrawl = new FirecrawlApp({ apiKey: process.env.FIRECRAWL_API_KEY });
 const anthropic  = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -166,8 +166,8 @@ async function scrapeInstagram(handle) {
 
     let attempts = 0;
     let status = 'RUNNING';
-    while (status === 'RUNNING' && attempts < 8) {
-      await new Promise(r => setTimeout(r, 4000));
+    while (status === 'RUNNING' && attempts < 12) {
+      await new Promise(r => setTimeout(r, 5000));
       const statusData = await fetch(
         `https://api.apify.com/v2/actor-runs/${runId}?token=${token}`
       ).then(r => r.json());
@@ -281,7 +281,7 @@ export async function POST(request) {
   ] = await Promise.all([
     withTimeout(scrapeAbout(cleanWebsiteUrl, homepageFingerprint), 10000),
     withTimeout(scrapeBlog(cleanWebsiteUrl, homepageFingerprint),  10000),
-    withTimeout(scrapeInstagram(instagramHandle),                   20000),
+    withTimeout(scrapeInstagram(instagramHandle),                   50000),
     withTimeout(scrapeCompetitor(cleanComp1Url), 10000, { content: '', screenshot: '' }),
     withTimeout(scrapeCompetitor(cleanComp2Url), 10000, { content: '', screenshot: '' }),
   ]);
