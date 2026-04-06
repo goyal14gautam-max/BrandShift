@@ -27,6 +27,26 @@
   color: var(--bs-text-primary);
 }
 
+.navRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.navGhost {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 0.6rem 1.25rem;
+  font-family: var(--font-ui);
+  font-size: 0.875rem;
+  color: var(--bs-text-primary);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.navGhost:hover { background: rgba(255, 255, 255, 0.06); }
+
 .navCta {
   background: var(--bs-orange);
   color: white;
@@ -447,6 +467,26 @@
   color: var(--bs-text-secondary);
   line-height: 1.7;
 }
+
+.ctaSignIn {
+  font-family: var(--font-ui);
+  font-size: 0.8125rem;
+  color: var(--bs-text-tertiary);
+  text-align: center;
+  margin-top: 4px;
+}
+
+.ctaSignInLink {
+  background: none;
+  border: none;
+  color: var(--bs-violet);
+  font-family: var(--font-ui);
+  font-size: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+.ctaSignInLink:hover { opacity: 0.8; }
 
 /* ── Footer ────────────────────────────────────────────────── */
 .footer {

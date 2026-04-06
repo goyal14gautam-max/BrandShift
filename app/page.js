@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import styles from './page.module.css';
 import { trackPageView, trackEvent } from '@/lib/analytics';
+import { useAuth } from '@/hooks/useAuth';
 
 const STEPS = [
   {
@@ -42,6 +43,7 @@ const SAMPLE_DIMS = [
 
 export default function Home() {
   const router = useRouter();
+  const { user, isLoading } = useAuth();
 
   useEffect(() => {
     trackPageView('landing_page');
@@ -53,9 +55,24 @@ export default function Home() {
       {/* ── Nav ── */}
       <header className={styles.nav}>
         <span className={styles.navLogo}>BrandShift</span>
-        <button className={styles.navCta} onClick={() => { trackEvent('cta_clicked', { cta: 'start_free_audit', location: 'nav' }); router.push('/audit'); }}>
-          Start Free Audit →
-        </button>
+        <div className={styles.navRight}>
+          {!isLoading && (
+            user ? (
+              <button className={styles.navCta} onClick={() => router.push('/dashboard')}>
+                Go to Dashboard →
+              </button>
+            ) : (
+              <>
+                <button className={styles.navGhost} onClick={() => router.push('/login')}>
+                  Sign in
+                </button>
+                <button className={styles.navCta} onClick={() => { trackEvent('cta_clicked', { cta: 'start_free_audit', location: 'nav' }); router.push('/audit'); }}>
+                  Start free audit
+                </button>
+              </>
+            )
+          )}
+        </div>
       </header>
 
       {/* ── Hero ── */}
@@ -180,6 +197,10 @@ export default function Home() {
         <button className={styles.primaryBtn} onClick={() => router.push('/audit')}>
           Start Free Audit →
         </button>
+        <p className={styles.ctaSignIn}>
+          Already have an account?{' '}
+          <button className={styles.ctaSignInLink} onClick={() => router.push('/login')}>Sign in →</button>
+        </p>
       </section>
 
       {/* ── Footer ── */}

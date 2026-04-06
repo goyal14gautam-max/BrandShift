@@ -7,6 +7,7 @@ const PROTECTED_ROUTES = [
   '/constitution',
   '/outreach',
   '/reports',
+  '/settings',
 ];
 
 export async function middleware(request) {
