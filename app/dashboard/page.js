@@ -163,31 +163,14 @@ function ErrorState({ error, onAction }) {
 }
 
 // ── Exit interview modal ──────────────────────────────────────
-function ExitModal({ taskText, taskIndex, brandName, onSave, onClose }) {
+function ExitModal({ taskText, onSave, onClose }) {
   const [didIt, setDidIt] = useState('');
   const [what, setWhat]   = useState('');
   const [diff, setDiff]   = useState('');
-  const [saving, setSaving] = useState(false);
 
-  async function handleSave() {
+  function handleSave() {
     if (!didIt) return;
-    setSaving(true);
-    try {
-      await fetch('/api/tasks/complete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          brandName, taskIndex, did_it: didIt,
-          what_happened: what, what_differently: diff,
-        }),
-      });
-      onSave({ didIt, what, diff });
-    } catch (err) {
-      console.error('Exit interview save failed:', err);
-      onSave({ didIt, what, diff });
-    } finally {
-      setSaving(false);
-    }
+    onSave({ didIt, what, diff });
   }
 
   return (
@@ -263,13 +246,16 @@ export default function Dashboard() {
 
   function openModal(idx) {
     setModalTaskIdx(idx);
-    markTaskDone(idx);
     setModalOpen(true);
   }
 
   function handleModalSave(result) {
     setModalOpen(false);
-    // Update streak locally
+    markTaskDone(modalTaskIdx, {
+      did_it:           result.didIt,
+      what_happened:    result.what,
+      what_differently: result.diff,
+    });
     showToast('Task marked complete 🎉');
   }
 
@@ -635,9 +621,7 @@ export default function Dashboard() {
       {/* ── Exit interview modal ── */}
       {modalOpen && (
         <ExitModal
-          taskText={todayTask?.task}
-          taskIndex={modalTaskIdx}
-          brandName={profile?.brand_name}
+          taskText={profile?.tasks?.[modalTaskIdx]?.task}
           onSave={handleModalSave}
           onClose={() => setModalOpen(false)}
         />
