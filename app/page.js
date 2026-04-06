@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import styles from './page.module.css';
 import { trackPageView, trackEvent } from '@/lib/analytics';
 import { useAuth } from '@/hooks/useAuth';
+import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 
 const STEPS = [
   {
@@ -47,6 +48,10 @@ export default function Home() {
 
   useEffect(() => {
     trackPageView('landing_page');
+    const supabase = createSupabaseBrowserClient();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) router.replace('/dashboard');
+    });
   }, []);
 
   return (

@@ -1,3 +1,5 @@
+'use client';
+
 import Sidebar from '@/components/Sidebar';
 
 export default function DashboardLayout({ children }) {
@@ -8,7 +10,7 @@ export default function DashboardLayout({ children }) {
       background: 'var(--bs-base)',
     }}>
       <Sidebar />
-      <main style={{ flex: 1, overflow: 'auto' }}>
+      <main style={{ flex: 1, overflow: 'auto', minWidth: 0 }}>
         {children}
       </main>
     </div>
