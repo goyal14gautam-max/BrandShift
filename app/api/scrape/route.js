@@ -281,7 +281,7 @@ export async function POST(request) {
   ] = await Promise.all([
     withTimeout(scrapeAbout(cleanWebsiteUrl, homepageFingerprint), 10000),
     withTimeout(scrapeBlog(cleanWebsiteUrl, homepageFingerprint),  10000),
-    withTimeout(scrapeInstagram(instagramHandle),                   30000),
+    withTimeout(scrapeInstagram(instagramHandle),                   20000),
     withTimeout(scrapeCompetitor(cleanComp1Url), 10000, { content: '', screenshot: '' }),
     withTimeout(scrapeCompetitor(cleanComp2Url), 10000, { content: '', screenshot: '' }),
   ]);
@@ -302,7 +302,7 @@ export async function POST(request) {
   console.log('Competitor 2:',{ length: scrapedComp2.length,     preview: scrapedComp2.slice(0, 100)     || 'EMPTY' });
   console.log('=== END SCRAPE RESULTS ===');
 
-  const instagramSignals = await extractInstagramSignals(scrapedInstagram);
+  const instagramSignals = await withTimeout(extractInstagramSignals(scrapedInstagram), 8000, '');
 
   return NextResponse.json({
     scraped_homepage:  scrapedHomepage,
