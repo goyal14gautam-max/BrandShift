@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import styles from './roadmap.module.css';
+import { trackPageView, trackEvent } from '@/lib/analytics';
 
 export default function Roadmap() {
   const router = useRouter();
@@ -46,6 +47,9 @@ export default function Roadmap() {
     const intake    = rawIntake ? JSON.parse(rawIntake) : {};
 
     if (rawBrand) setBrand(brandData);
+
+    trackPageView('roadmap_page');
+    trackEvent('roadmap_viewed', { brand_name: brandData.brandName || intake.brandName });
 
     generateRoadmap(scoreData, brandData, intake);
   }, []);
@@ -189,7 +193,10 @@ export default function Roadmap() {
           <a href="/dashboard" className={styles.dashboardBtn}>
             Go to Dashboard →
           </a>
-          <button className={styles.downloadBtn} onClick={() => window.print()}>
+          <button className={styles.downloadBtn} onClick={() => {
+            trackEvent('pdf_downloaded', { brand_name: brand?.brandName, page: 'roadmap' });
+            window.print();
+          }}>
             Download Roadmap (PDF)
           </button>
         </div>

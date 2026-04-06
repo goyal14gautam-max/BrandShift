@@ -12,6 +12,7 @@ import BrandRadarChart from '@/components/BrandRadarChart';
 import Tooltip from '@/components/Tooltip';
 import EvidenceSection from '@/components/EvidenceSection';
 import styles from './results.module.css';
+import { trackPageView, trackEvent } from '@/lib/analytics';
 
 // ── Dimension config (5 real dims) ─────────────────────────────
 const DIM_CONFIG = [
@@ -166,11 +167,19 @@ export default function Results() {
   useEffect(() => {
     const raw = localStorage.getItem('brandshift_score');
     if (!raw) { router.push('/audit'); return; }
-    setScoreData(JSON.parse(raw));
+    const score = JSON.parse(raw);
+    setScoreData(score);
     const intake = localStorage.getItem('brandshift_intake');
-    if (intake) setIntakeData(JSON.parse(intake));
+    const intakeParsed = intake ? JSON.parse(intake) : {};
+    if (intake) setIntakeData(intakeParsed);
     const scraped = localStorage.getItem('brandshift_scraped');
     if (scraped) setScrapedData(JSON.parse(scraped));
+    trackPageView('results_page');
+    trackEvent('results_viewed', {
+      brand_name: intakeParsed?.brandName,
+      overall_score: score?.overall_score,
+      rebrand_urgency: score?.rebrand_urgency,
+    });
   }, [router]);
 
   if (!scoreData) return null;
@@ -207,6 +216,7 @@ export default function Results() {
   }
 
   async function handleShareReport() {
+    trackEvent('report_shared', { brand_name: intakeData?.brandName });
     setShareLoading(true);
     try {
       const res = await fetch('/api/share/create', {
@@ -587,7 +597,10 @@ export default function Results() {
         <section className={styles.ctaSection}>
           <h2 className={styles.ctaHeading}>Ready to close the gaps?</h2>
           <p className={styles.ctaSub}>Generate a strategic roadmap tailored to your goals</p>
-          <button className={styles.ctaBtn} onClick={() => router.push('/roadmap')}>
+          <button className={styles.ctaBtn} onClick={() => {
+            trackEvent('roadmap_cta_clicked', { brand_name: intakeData?.brandName, overall_score: scoreData?.overall_score, location: 'results_bottom' });
+            router.push('/roadmap');
+          }}>
             Generate Roadmap →
           </button>
           <div className={styles.ctaBtnRow}>

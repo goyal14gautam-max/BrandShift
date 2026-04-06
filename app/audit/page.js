@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import SuggestInput from '@/components/SuggestInput';
 import styles from './audit.module.css';
+import { trackPageView, trackEvent } from '@/lib/analytics';
 
 const INDUSTRY_SUGGESTIONS = [
   'D2C / Consumer Brand', 'FMCG / Food & Beverage', 'Fashion & Lifestyle',
@@ -103,6 +104,8 @@ export default function Audit() {
 
   // Restore from localStorage on mount
   useEffect(() => {
+    trackPageView('audit_form');
+    trackEvent('audit_started');
     const saved = localStorage.getItem('brandshift_intake');
     if (saved) {
       try {
@@ -163,6 +166,9 @@ export default function Audit() {
     await new Promise(r => setTimeout(r, 200));
     setStepping(false);
 
+    const stepNames = ['', 'brand_foundations', 'digital_footprint', 'competitors', 'challenge', 'review'];
+    trackEvent('audit_step_completed', { step: currentStep, step_name: stepNames[currentStep] });
+
     if (currentStep < 5) {
       setCurrentStep(prev => prev + 1);
     } else {
@@ -171,6 +177,11 @@ export default function Audit() {
   }
 
   function submitForm() {
+    trackEvent('audit_submitted', {
+      industry: formData.industry,
+      has_instagram: !!formData.instagramHandle,
+      has_competitors: !!formData.competitor1,
+    });
     localStorage.setItem('brandshift_intake', JSON.stringify({
       ...formData,
       submittedAt: new Date().toISOString(),

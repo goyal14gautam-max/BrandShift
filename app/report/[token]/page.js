@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { CheckCircle, AlertCircle, Eye, MessageSquare, TrendingUp, Target, Users } from 'lucide-react';
 import styles from './report.module.css';
+import { trackPageView, trackEvent } from '@/lib/analytics';
 
 const DIM_CONFIG = [
   { key: 'visual_identity',        label: 'Visual Identity',      icon: Eye           },
@@ -87,7 +88,15 @@ export default function SharedReport() {
       .then(r => r.json())
       .then(data => {
         if (!data.success) { setNotFound(true); }
-        else { setReport(data.report); }
+        else {
+          setReport(data.report);
+          trackPageView('shared_report');
+          trackEvent('shared_report_viewed', {
+            brand_name: data.report?.brand_name,
+            share_token: token,
+            overall_score: data.report?.score_data?.overall_score,
+          });
+        }
       })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
@@ -139,7 +148,10 @@ export default function SharedReport() {
           <button className={styles.topBtnSecondary} onClick={() => router.push('/audit')}>
             Get your free audit →
           </button>
-          <button className={styles.topBtnPrimary} onClick={() => router.push('/signup')}>
+          <button className={styles.topBtnPrimary} onClick={() => {
+            trackEvent('shared_report_cta_clicked', { cta: 'sign_up_to_fix', brand_name: report?.brand_name });
+            router.push('/signup');
+          }}>
             Sign up to fix this →
           </button>
         </div>
@@ -257,7 +269,10 @@ export default function SharedReport() {
           <div className={styles.ctaBtnRow}>
             <button
               className={styles.ctaPrimary}
-              onClick={() => router.push(`/audit?brand=${encodeURIComponent(report.brand_name)}`)}
+              onClick={() => {
+              trackEvent('shared_report_cta_clicked', { cta: 'start_for_free', brand_name: report?.brand_name, overall_score: scoreData?.overall_score });
+              router.push(`/audit?brand=${encodeURIComponent(report.brand_name)}`);
+            }}
             >
               Start for free →
             </button>

@@ -1,7 +1,9 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import styles from './page.module.css';
+import { trackPageView, trackEvent } from '@/lib/analytics';
 
 const STEPS = [
   {
@@ -41,13 +43,17 @@ const SAMPLE_DIMS = [
 export default function Home() {
   const router = useRouter();
 
+  useEffect(() => {
+    trackPageView('landing_page');
+  }, []);
+
   return (
     <div className={styles.page}>
 
       {/* ── Nav ── */}
       <header className={styles.nav}>
         <span className={styles.navLogo}>BrandShift</span>
-        <button className={styles.navCta} onClick={() => router.push('/audit')}>
+        <button className={styles.navCta} onClick={() => { trackEvent('cta_clicked', { cta: 'start_free_audit', location: 'nav' }); router.push('/audit'); }}>
           Start Free Audit →
         </button>
       </header>
@@ -64,7 +70,7 @@ export default function Home() {
           Then tells you what to fix — and in what order.
         </p>
         <div className={styles.heroActions}>
-          <button className={styles.primaryBtn} onClick={() => router.push('/audit')}>
+          <button className={styles.primaryBtn} onClick={() => { trackEvent('cta_clicked', { cta: 'start_free_audit', location: 'hero' }); router.push('/audit'); }}>
             Run Free Brand Audit →
           </button>
           <span className={styles.heroNote}>No signup. Results in under 2 minutes.</span>

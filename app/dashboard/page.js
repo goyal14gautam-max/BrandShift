@@ -12,6 +12,7 @@ import {
 } from 'recharts';
 import { useDashboard } from '@/hooks/useDashboard';
 import styles from './dashboard.module.css';
+import { trackPageView, trackEvent } from '@/lib/analytics';
 
 // ── Constants ────────────────────────────────────────────────
 const NAV_ITEMS = [
@@ -237,6 +238,18 @@ export default function Dashboard() {
   const [answerSaved, setAnswerSaved]   = useState(false);
   const [activeNav, setActiveNav]       = useState('/dashboard');
 
+  // Track page view on mount
+  useEffect(() => {
+    if (!isLoading && profile) {
+      trackPageView('dashboard');
+      trackEvent('dashboard_opened', {
+        brand_name: profile?.brand_name,
+        current_week: profile?.current_week,
+        streak: profile?.pulse_streak,
+      });
+    }
+  }, [isLoading, profile]);
+
   // Mark brief opened on mount when new
   useEffect(() => {
     if (isBriefNew) markBriefOpened();
@@ -254,6 +267,13 @@ export default function Dashboard() {
 
   function handleModalSave(result) {
     setModalOpen(false);
+    const task = weekTasks[modalTaskIdx];
+    trackEvent('task_completed', {
+      brand_name: profile?.brand_name,
+      week: currentWeek,
+      effort: task?.effort,
+      did_it: result.didIt,
+    });
     markTaskDone(modalTaskIdx, {
       did_it:           result.didIt,
       what_happened:    result.what,
@@ -262,9 +282,21 @@ export default function Dashboard() {
     showToast('Task marked complete 🎉');
   }
 
+  function handleGenerateBrief() {
+    trackEvent('monday_brief_generated', {
+      brand_name: profile?.brand_name,
+      triggered_by: 'manual',
+    });
+    generateBriefNow();
+  }
+
   async function handleSaveAnswer() {
     if (!answer.trim() || !todayQuestion) return;
     await saveConstitutionAnswer(todayQuestion.question, answer);
+    trackEvent('constitution_answered', {
+      brand_name: profile?.brand_name,
+      questions_completed: (constitutionProgress?.answered ?? 0) + 1,
+    });
     setAnswerSaved(true);
     setTimeout(() => setAnswerSaved(false), 2000);
     setAnswer('');
@@ -453,7 +485,7 @@ export default function Dashboard() {
                   )}
                   <button
                     className={styles.briefRefreshBtn}
-                    onClick={generateBriefNow}
+                    onClick={handleGenerateBrief}
                     disabled={isGeneratingBrief}
                   >
                     {isGeneratingBrief ? 'Generating…' : 'Generate fresh brief →'}
@@ -467,7 +499,7 @@ export default function Dashboard() {
                 <p className={styles.briefEmptySub}>Briefs are generated every Sunday night</p>
                 <button
                   className={styles.briefGenerateBtn}
-                  onClick={generateBriefNow}
+                  onClick={handleGenerateBrief}
                   disabled={isGeneratingBrief}
                 >
                   {isGeneratingBrief ? 'Generating…' : 'Generate brief now'}

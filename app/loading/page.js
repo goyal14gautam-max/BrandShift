@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CheckCircle, AlertCircle } from 'lucide-react';
 import styles from './loading.module.css';
+import { trackEvent } from '@/lib/analytics';
 
 const STEPS = [
   'Scanning homepage architecture...',
@@ -79,6 +80,7 @@ export default function Loading() {
       const raw = localStorage.getItem('brandshift_intake');
       if (!raw) { router.push('/audit'); return; }
       const intake = JSON.parse(raw);
+      trackEvent('analysis_started', { brand_name: intake?.brandName });
 
       // Clear stale results from any previous audit immediately
       localStorage.removeItem('brandshift_score');
@@ -104,6 +106,12 @@ export default function Loading() {
       });
       const scrapeData = await scrapeRes.json();
       if (scrapeData.error) throw new Error('Scrape failed: ' + scrapeData.error);
+
+      trackEvent('scraping_completed', {
+        homepage_success: !!scrapeData.scraped_homepage,
+        instagram_success: !!scrapeData.scraped_instagram,
+        competitor_success: !!scrapeData.scraped_comp1,
+      });
 
       // Activate steps 2 → 3 → 4 in sequence after scrape
       activateStep(1);
@@ -154,6 +162,13 @@ export default function Loading() {
       });
       const scoreData = await scoreRes.json();
       if (scoreData.error) throw new Error(scoreData.error);
+
+      trackEvent('score_generated', {
+        brand_name: intake?.brandName,
+        overall_score: scoreData?.overall_score,
+        data_confidence: scoreData?.data_confidence,
+        brand_type: scoreData?.brand_type,
+      });
 
       setProgress(95);
       completeAllSteps();
