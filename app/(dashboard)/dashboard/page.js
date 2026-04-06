@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  LayoutDashboard, Map, BarChart2, FileText, BookOpen, Settings,
+  LayoutDashboard, BarChart2, FileText, BookOpen, Map,
   Flame, CheckCircle, Calendar, Search, ArrowUp, ArrowDown,
 } from 'lucide-react';
 import {
@@ -13,16 +13,6 @@ import {
 import { useDashboard } from '@/hooks/useDashboard';
 import styles from './dashboard.module.css';
 import { trackPageView, trackEvent } from '@/lib/analytics';
-
-// ── Constants ────────────────────────────────────────────────
-const NAV_ITEMS = [
-  { icon: LayoutDashboard, label: 'Dashboard',   href: '/dashboard'   },
-  { icon: Map,             label: 'Roadmap',      href: '/roadmap'     },
-  { icon: BarChart2,       label: 'Brand Score',  href: '/results'     },
-  { icon: FileText,        label: 'Reports',      href: '/reports'     },
-  { icon: BookOpen,        label: 'Constitution', href: '/constitution' },
-  { icon: Settings,        label: 'Settings',     href: '/settings'    },
-];
 
 // ── Helpers ──────────────────────────────────────────────────
 function scoreColor(s) {
@@ -236,7 +226,6 @@ export default function Dashboard() {
   const [toast, setToast]               = useState('');
   const [answer, setAnswer]             = useState('');
   const [answerSaved, setAnswerSaved]   = useState(false);
-  const [activeNav, setActiveNav]       = useState('/dashboard');
 
   // Track page view on mount
   useEffect(() => {
@@ -330,38 +319,19 @@ export default function Dashboard() {
   // Today task index in original array
   const todayTaskIdx = profile?.tasks?.findIndex(t => t.status === 'todo') ?? -1;
 
-  if (isLoading) {
-    return (
-      <div className={styles.layout}>
-        <Sidebar profile={null} latestScore={null} scoreDelta={null} activeNav={activeNav} router={router} setActiveNav={setActiveNav} />
-        <LoadingSkeleton />
-      </div>
-    );
-  }
+  if (isLoading) return <LoadingSkeleton />;
 
   if (error) {
     return (
-      <div className={styles.layout}>
-        <Sidebar profile={null} latestScore={null} scoreDelta={null} activeNav={activeNav} router={router} setActiveNav={setActiveNav} />
-        <div className={styles.mainContent}>
-          <ErrorState error={error} onAction={() => router.push('/audit')} />
-        </div>
+      <div className={styles.mainContent}>
+        <ErrorState error={error} onAction={() => router.push('/audit')} />
       </div>
     );
   }
 
   return (
-    <div className={styles.layout}>
-      <Sidebar
-        profile={profile}
-        latestScore={latestScore}
-        scoreDelta={scoreDelta}
-        activeNav={activeNav}
-        router={router}
-        setActiveNav={setActiveNav}
-      />
-
-      <main className={styles.mainContent}>
+    <>
+    <main className={styles.mainContent}>
 
         {/* ── Top bar ── */}
         <div className={styles.topBar}>
@@ -703,69 +673,17 @@ export default function Dashboard() {
       <nav className={styles.mobileNav}>
         {[
           { icon: LayoutDashboard, label: 'Home',     href: '/dashboard' },
-          { icon: Map,             label: 'Roadmap',  href: '/roadmap'   },
           { icon: BarChart2,       label: 'Score',    href: '/results'   },
           { icon: BookOpen,        label: 'Menu',     href: '/constitution' },
         ].map(({ icon: Icon, label, href }) => (
-          <button key={href} className={`${styles.mobileNavTab} ${activeNav === href ? styles.mobileNavTabActive : ''}`}
-            onClick={() => { setActiveNav(href); router.push(href); }}>
+          <button key={href} className={styles.mobileNavTab}
+            onClick={() => router.push(href)}>
             <Icon size={20} />
             <span>{label}</span>
           </button>
         ))}
       </nav>
-
-    </div>
+    </>
   );
 }
 
-// ── Sidebar ───────────────────────────────────────────────────
-function Sidebar({ profile, latestScore, scoreDelta, activeNav, router, setActiveNav }) {
-  return (
-    <aside className={styles.sidebar}>
-      <div className={styles.sidebarLogo}>
-        <p className={styles.logoText}>BrandShift</p>
-        {profile?.brand_name && (
-          <p className={styles.logoBrand}>{profile.brand_name}</p>
-        )}
-        {profile?.industry && (
-          <span className={styles.industryBadge}>{profile.industry}</span>
-        )}
-      </div>
-
-      <div className={styles.sidebarDivider} />
-
-      <nav className={styles.sidebarNav}>
-        {NAV_ITEMS.map(({ icon: Icon, label, href }) => (
-          <button
-            key={href}
-            className={`${styles.navItem} ${activeNav === href ? styles.navItemActive : ''}`}
-            onClick={() => { setActiveNav(href); router.push(href); }}
-          >
-            <Icon size={16} />
-            <span>{label}</span>
-          </button>
-        ))}
-      </nav>
-
-      <div className={styles.sidebarScoreWidget}>
-        <p className={styles.scoreWidgetLabel}>BRAND SCORE</p>
-        <div className={styles.scoreWidgetRow}>
-          <span className={styles.scoreWidgetNum} style={{ color: scoreColor(latestScore) }}>
-            {latestScore ?? '—'}
-          </span>
-          {scoreDelta !== null && scoreDelta !== 0 && (
-            <span className={styles.scoreWidgetDelta} style={{ color: scoreDelta >= 0 ? 'var(--bs-teal)' : 'var(--destructive)' }}>
-              {scoreDelta >= 0 ? '↑' : '↓'} {Math.abs(scoreDelta)}
-            </span>
-          )}
-        </div>
-        <p className={styles.scoreWidgetSub}>
-          {profile?.latest_score_date
-            ? `Updated ${formatScoreDate(profile.latest_score_date)}`
-            : 'Last updated'}
-        </p>
-      </div>
-    </aside>
-  );
-}
