@@ -11,13 +11,34 @@ export function useDashboard() {
   useEffect(() => {
     async function loadProfile() {
       try {
-        const brandName = localStorage.getItem('brandshift_active_brand');
+        // Priority 1: brand from authenticated account
+        let brandName = null;
+        try {
+          const accountRes = await fetch('/api/auth/account');
+          if (accountRes.ok) {
+            const accountData = await accountRes.json();
+            brandName = accountData.account?.primary_brand || null;
+            console.log('Brand from account:', brandName);
+          }
+        } catch (err) {
+          console.log('Could not fetch account:', err.message);
+        }
+
+        // Priority 2: fall back to localStorage
+        if (!brandName) {
+          brandName = localStorage.getItem('brandshift_active_brand') || null;
+          console.log('Brand from localStorage:', brandName);
+        }
 
         if (!brandName) {
+          console.log('No brand found anywhere');
           setError('no_brand');
           setIsLoading(false);
           return;
         }
+
+        // Keep localStorage in sync
+        localStorage.setItem('brandshift_active_brand', brandName);
 
         const res  = await fetch(`/api/profile?brandName=${encodeURIComponent(brandName)}`);
         const data = await res.json();

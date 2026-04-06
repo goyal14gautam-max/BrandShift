@@ -30,14 +30,23 @@ export function AuthProvider({ children }) {
 
           if (event === 'SIGNED_IN') {
             const pendingBrand = localStorage.getItem('brandshift_active_brand');
+            console.log('SIGNED_IN event, pending brand:', pendingBrand);
             if (pendingBrand) {
               try {
-                await fetch('/api/auth/associate-brand', {
+                const res = await fetch('/api/auth/associate-brand', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ brandName: pendingBrand }),
                 });
-              } catch {}
+                const result = await res.json();
+                console.log('Associate result:', result);
+                if (result.success) {
+                  // Reload account to pick up the updated primary_brand
+                  await loadAccount();
+                }
+              } catch (err) {
+                console.error('Brand association error:', err);
+              }
             }
           }
         } else {

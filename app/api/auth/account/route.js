@@ -29,6 +29,27 @@ export async function GET() {
       .eq('user_id', user.id)
       .single();
 
+    // Recovery: account exists but has no primary_brand — check for owned profiles
+    if (account && !account.primary_brand) {
+      const { data: ownedProfile } = await supabaseAdmin
+        .from('brand_profiles')
+        .select('brand_name')
+        .eq('owner_user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (ownedProfile) {
+        await supabaseAdmin
+          .from('accounts')
+          .update({ primary_brand: ownedProfile.brand_name })
+          .eq('user_id', user.id);
+
+        account.primary_brand = ownedProfile.brand_name;
+        console.log('Recovered primary brand:', ownedProfile.brand_name);
+      }
+    }
+
     return NextResponse.json({
       user: { id: user.id, email: user.email },
       account,
