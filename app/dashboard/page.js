@@ -206,8 +206,8 @@ function ExitModal({ taskText, onSave, onClose }) {
 
         <div className={styles.modalBtnRow}>
           <button className={styles.modalSkip} onClick={onClose}>Skip</button>
-          <button className={styles.modalSave} onClick={handleSave} disabled={!didIt || saving}>
-            {saving ? 'Saving…' : 'Save'}
+          <button className={styles.modalSave} onClick={handleSave} disabled={!didIt}>
+            Save
           </button>
         </div>
       </div>
