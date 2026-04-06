@@ -1,6 +1,7 @@
 import { Instrument_Serif, Inter, JetBrains_Mono, Cormorant_Garamond } from 'next/font/google';
 import './globals.css';
 import AnalyticsProvider from '@/components/AnalyticsProvider';
+import { AuthProvider } from '@/hooks/useAuth';
 
 const instrumentSerif = Instrument_Serif({
   subsets: ['latin'],
@@ -38,7 +39,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className={`${instrumentSerif.variable} ${inter.variable} ${jetbrainsMono.variable} ${cormorant.variable}`}>
-      <body><AnalyticsProvider>{children}</AnalyticsProvider></body>
+      <body><AuthProvider><AnalyticsProvider>{children}</AnalyticsProvider></AuthProvider></body>
     </html>
   );
 }

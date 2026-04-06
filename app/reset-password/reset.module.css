@@ -1,0 +1,113 @@
+.page {
+  min-height: 100vh;
+  background: var(--bs-base);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.logo {
+  font-family: var(--font-headline);
+  font-size: 22px;
+  font-weight: 400;
+  color: var(--bs-text-primary);
+  margin-bottom: 40px;
+}
+
+.card {
+  background: var(--bs-card-dark);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius);
+  padding: 40px;
+  width: 100%;
+  max-width: 440px;
+}
+
+.heading {
+  font-family: var(--font-headline);
+  font-size: 28px;
+  font-weight: 400;
+  color: var(--bs-text-primary);
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.sub {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: var(--bs-text-secondary);
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.form { display: flex; flex-direction: column; gap: 16px; }
+
+.field { display: flex; flex-direction: column; gap: 6px; }
+
+.label {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--bs-text-secondary);
+}
+
+.input {
+  width: 100%;
+  background: var(--bs-card-light);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: var(--bs-text-primary);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.input::placeholder { color: var(--bs-text-tertiary); }
+.input:focus { border-color: var(--bs-violet); }
+.inputError { border-color: var(--destructive) !important; }
+
+.error {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--destructive);
+  background: rgba(212, 24, 61, 0.08);
+  border: 1px solid rgba(212, 24, 61, 0.2);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+}
+
+.submitBtn {
+  width: 100%;
+  background: var(--bs-orange);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  padding: 12px;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s;
+}
+
+.submitBtn:hover:not(:disabled) { opacity: 0.88; }
+.submitBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }

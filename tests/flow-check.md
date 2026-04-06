@@ -190,3 +190,4 @@ Use this test brand:
 | brand_profiles row not created | Supabase SERVICE_KEY wrong or table missing |
 | tasks array empty | `flattenRoadmapToTasks` not running — check roadmap API logs |
 | Dashboard 404 | `/app/dashboard/page.js` not yet created |
+ 
