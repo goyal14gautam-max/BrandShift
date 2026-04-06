@@ -46,8 +46,30 @@ export function useDashboard() {
   const streak      = profile?.pulse_streak  || 0;
   const latestBrief = profile?.monday_briefs?.[profile.monday_briefs.length - 1] || null;
   const isBriefNew  = latestBrief && !latestBrief.was_opened;
-  const scoreHistory = profile?.score_history || [];
+  // Fix 3 — deduplicate score_history by calendar day
+  const scoreHistory = (() => {
+    const history = profile?.score_history || [];
+    if (!history.length) return [];
+    const byDate = {};
+    history.forEach(entry => {
+      const date = entry.date
+        ? entry.date.split('T')[0]
+        : new Date().toISOString().split('T')[0];
+      byDate[date] = entry;
+    });
+    return Object.entries(byDate)
+      .sort(([a], [b]) => new Date(a) - new Date(b))
+      .map(([date, entry]) => ({ ...entry, date }));
+  })();
+
   const latestScore  = profile?.latest_overall_score || null;
+
+  // Fix 1 — pull individual dimension scores from latest score_history entry
+  const latestDimensions = (() => {
+    if (!profile?.score_history?.length) return null;
+    const latest = profile.score_history[profile.score_history.length - 1];
+    return latest?.dimensions || null;
+  })();
   const previousScore = scoreHistory.length > 1
     ? scoreHistory[scoreHistory.length - 2]?.overall_score
     : null;
@@ -178,6 +200,7 @@ export function useDashboard() {
     isBriefNew,
     scoreHistory,
     latestScore,
+    latestDimensions,
     scoreDelta,
     constitutionProgress,
     todayQuestion,

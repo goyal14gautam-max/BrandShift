@@ -23,14 +23,6 @@ const NAV_ITEMS = [
   { icon: Settings,        label: 'Settings',     href: '/settings'    },
 ];
 
-const DIM_LABELS = {
-  visual_identity:        'Visual',
-  tone_voice:             'Voice',
-  trend_relevance:        'Trends',
-  competitor_positioning: 'Positioning',
-  audience_alignment:     'Audience',
-};
-
 // ── Helpers ──────────────────────────────────────────────────
 function scoreColor(s) {
   if (!s) return 'var(--bs-text-tertiary)';
@@ -50,6 +42,16 @@ function formatDate() {
   return new Date().toLocaleDateString('en-GB', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   });
+}
+
+function formatScoreDate(isoString) {
+  if (!isoString) return '';
+  const date = new Date(isoString);
+  const today = new Date();
+  const yesterday = new Date(Date.now() - 86400000);
+  if (date.toDateString() === today.toDateString()) return 'today';
+  if (date.toDateString() === yesterday.toDateString()) return 'yesterday';
+  return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 }
 
 function truncate(str, n) {
@@ -222,7 +224,7 @@ export default function Dashboard() {
     profile, isLoading, error,
     todayTask, currentWeek, streak,
     latestBrief, isBriefNew,
-    scoreHistory, latestScore, scoreDelta,
+    scoreHistory, latestScore, latestDimensions, scoreDelta,
     constitutionProgress, todayQuestion,
     isGeneratingBrief,
     markTaskDone, saveConstitutionAnswer, markBriefOpened, generateBriefNow,
@@ -275,9 +277,14 @@ export default function Dashboard() {
   const doneCount  = weekTasks.filter(t => t.status === 'done').length;
   const totalTasks = weekTasks.length;
 
-  // Score dimensions
-  const dims = profile?.score_json?.dimensions || {};
-  const dimKeys = ['visual_identity', 'tone_voice', 'trend_relevance', 'competitor_positioning', 'audience_alignment'];
+  // Fix 1 — dimension bars use per-dimension scores from latest score_history
+  const dimensionConfig = [
+    { key: 'visual_identity',        label: 'Visual',      score: latestDimensions?.visual_identity?.score        ?? latestScore ?? 50 },
+    { key: 'tone_voice',             label: 'Voice',       score: latestDimensions?.tone_voice?.score             ?? latestScore ?? 50 },
+    { key: 'trend_relevance',        label: 'Trends',      score: latestDimensions?.trend_relevance?.score        ?? latestScore ?? 50 },
+    { key: 'competitor_positioning', label: 'Positioning', score: latestDimensions?.competitor_positioning?.score ?? latestScore ?? 50 },
+    { key: 'audience_alignment',     label: 'Audience',    score: latestDimensions?.audience_alignment?.score     ?? latestScore ?? 50 },
+  ];
 
   // Score history chart data
   const chartData = scoreHistory.map(e => ({
@@ -352,11 +359,13 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className={styles.focusRight}>
-                <div className={styles.streakDisplay}>
-                  <Flame size={20} style={{ color: 'var(--bs-amber)' }} />
-                  <span className={styles.streakNum}>{streak}</span>
-                  <span className={styles.streakLabel}>day streak</span>
-                </div>
+                {streak > 0 && (
+                  <div className={styles.streakDisplay}>
+                    <Flame size={20} style={{ color: 'var(--bs-amber)' }} />
+                    <span className={styles.streakNum}>{streak}</span>
+                    <span className={styles.streakLabel}>day streak</span>
+                  </div>
+                )}
                 <button className={styles.markDoneBtn}
                   onClick={() => todayTaskIdx !== -1 && openModal(todayTaskIdx)}>
                   Mark done →
@@ -388,7 +397,7 @@ export default function Dashboard() {
                     {truncate(profile.score_json.verdict.split('.')[0], 100)}
                   </p>
                 )}
-                {scoreDelta !== null && (
+                {scoreDelta !== null && scoreDelta !== 0 && (
                   <div className={styles.scoreDeltaRow}>
                     {scoreDelta >= 0
                       ? <ArrowUp size={12} style={{ color: 'var(--bs-teal)' }} />
@@ -401,16 +410,13 @@ export default function Dashboard() {
               </div>
             </div>
             <div className={styles.dimBars}>
-              {dimKeys.map((k, i) => {
-                const s = dims[k]?.score ?? latestScore ?? 50;
-                return (
-                  <div key={k} className={styles.dimBarRow}>
-                    <span className={styles.dimBarLabel}>{DIM_LABELS[k]}</span>
-                    <AnimBar score={s} delay={i * 80} />
-                    <span className={styles.dimBarScore}>{s}</span>
-                  </div>
-                );
-              })}
+              {dimensionConfig.map((dim, i) => (
+                <div key={dim.key} className={styles.dimBarRow}>
+                  <span className={styles.dimBarLabel}>{dim.label}</span>
+                  <AnimBar score={dim.score} delay={i * 80} />
+                  <span className={styles.dimBarScore}>{dim.score}</span>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -591,7 +597,7 @@ export default function Dashboard() {
             <span className={styles.cardMeta}>Updates every Monday</span>
           </div>
 
-          {chartData.length >= 2 ? (
+          {scoreHistory.length >= 3 ? (
             <div style={{ marginTop: 16 }}>
               <ResponsiveContainer width="100%" height={120}>
                 <LineChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
@@ -617,12 +623,15 @@ export default function Dashboard() {
                   />
                 </LineChart>
               </ResponsiveContainer>
+              <p style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--bs-text-tertiary)', textAlign: 'right', marginTop: 8 }}>
+                Each point = one week · Score updates every Monday
+              </p>
             </div>
           ) : (
             <div className={styles.chartEmpty}>
               <p className={styles.chartEmptyMain}>Score history builds over time</p>
               <p className={styles.chartEmptySub}>
-                Refreshes every Monday · {scoreHistory.length} of 4 data points collected
+                {scoreHistory.length} of 3 data points collected so far · Refreshes every Monday
               </p>
             </div>
           )}
@@ -713,13 +722,17 @@ function Sidebar({ profile, latestScore, scoreDelta, activeNav, router, setActiv
           <span className={styles.scoreWidgetNum} style={{ color: scoreColor(latestScore) }}>
             {latestScore ?? '—'}
           </span>
-          {scoreDelta !== null && (
+          {scoreDelta !== null && scoreDelta !== 0 && (
             <span className={styles.scoreWidgetDelta} style={{ color: scoreDelta >= 0 ? 'var(--bs-teal)' : 'var(--destructive)' }}>
               {scoreDelta >= 0 ? '↑' : '↓'} {Math.abs(scoreDelta)}
             </span>
           )}
         </div>
-        <p className={styles.scoreWidgetSub}>Last updated</p>
+        <p className={styles.scoreWidgetSub}>
+          {profile?.latest_score_date
+            ? `Updated ${formatScoreDate(profile.latest_score_date)}`
+            : 'Last updated'}
+        </p>
       </div>
     </aside>
   );
