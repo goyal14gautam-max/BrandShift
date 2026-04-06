@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+
+export const maxDuration = 60;
 import { SCORING_SYSTEM_PROMPT, SCORING_USER_PROMPT } from '@/lib/prompts';
 import { saveAudit, getBrandProfile, createBrandProfile, saveScoreToHistory } from '@/lib/supabase';
 
@@ -53,6 +55,7 @@ function extractJSON(text) {
 }
 
 export async function POST(request) {
+  try {
   const body = await request.json();
   const {
     brandName, industry, brandAge, targetAudience, challenge,
@@ -171,4 +174,8 @@ Return ONLY this JSON, no other text:
   }
 
   return NextResponse.json({ ...parsed, brandProfileId });
+  } catch (err) {
+    console.error('Score API error:', err.message);
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
 }

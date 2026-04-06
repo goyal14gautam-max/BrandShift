@@ -103,6 +103,7 @@ export default function Loading() {
         }),
       });
       const scrapeData = await scrapeRes.json();
+      if (scrapeData.error) throw new Error('Scrape failed: ' + scrapeData.error);
 
       // Activate steps 2 → 3 → 4 in sequence after scrape
       activateStep(1);
