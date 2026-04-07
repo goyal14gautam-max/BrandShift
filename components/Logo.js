@@ -17,7 +17,7 @@ export default function Logo({ size = 'md', showText = true, onClick }) {
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: '12px',
+        gap: '6px',
         cursor: onClick ? 'pointer' : 'default',
         textDecoration: 'none',
       }}
