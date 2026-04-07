@@ -3,9 +3,9 @@
 import Image from 'next/image';
 
 const SIZES = {
-  sm: { img: 30, text: '16px' },
-  md: { img: 36, text: '20px' },
-  lg: { img: 48, text: '28px' },
+  sm: { img: 60, text: '16px' },
+  md: { img: 72, text: '20px' },
+  lg: { img: 96, text: '28px' },
 };
 
 export default function Logo({ size = 'md', showText = true, onClick }) {
