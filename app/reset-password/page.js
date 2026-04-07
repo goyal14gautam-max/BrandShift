@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import Logo from '@/components/Logo';
 import styles from './reset.module.css';
 
 export default function ResetPassword() {
@@ -27,7 +28,7 @@ export default function ResetPassword() {
 
   return (
     <div className={styles.page}>
-      <div className={styles.logo}>BrandShift</div>
+      <div className={styles.logo}><Logo size="lg" /></div>
       <div className={styles.card}>
         <h1 className={styles.heading}>Set new password</h1>
         <p className={styles.sub}>Choose a strong password for your account.</p>

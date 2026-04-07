@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff } from 'lucide-react';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import Logo from '@/components/Logo';
 import styles from './login.module.css';
 
 function LoginInner() {
@@ -57,7 +58,7 @@ function LoginInner() {
   if (magicSent) {
     return (
       <div className={styles.page}>
-        <div className={styles.logo}>BrandShift</div>
+        <div className={styles.logo}><Logo size="lg" /></div>
         <div className={styles.card}>
           <p className={styles.magicIcon}>✉️</p>
           <h1 className={styles.heading}>Check your email</h1>
@@ -70,7 +71,7 @@ function LoginInner() {
 
   return (
     <div className={styles.page}>
-      <div className={styles.logo}>BrandShift</div>
+      <div className={styles.logo}><Logo size="lg" /></div>
 
       <div className={styles.card}>
         <h1 className={styles.heading}>Welcome back</h1>

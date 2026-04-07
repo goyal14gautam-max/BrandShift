@@ -1,12 +1,14 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { useDashboard } from '@/hooks/useDashboard';
 import {
   LayoutDashboard, Map, BarChart2, FileText,
   BookOpen, Settings, LogOut,
 } from 'lucide-react';
+import Logo from '@/components/Logo';
 import styles from './Sidebar.module.css';
 
 const NAV_ITEMS = [
@@ -38,13 +40,15 @@ function formatScoreDate(isoString) {
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, account, signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const { profile, latestScore, scoreDelta } = useDashboard();
 
   return (
     <aside className={styles.sidebar}>
       <div className={styles.sidebarLogo}>
-        <p className={styles.logoText}>BrandShift</p>
+        <Link href="/dashboard" style={{ textDecoration: 'none' }}>
+          <Logo size="sm" />
+        </Link>
         {profile?.brand_name && (
           <p className={styles.logoBrand}>{profile.brand_name}</p>
         )}

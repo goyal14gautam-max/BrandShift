@@ -2,10 +2,12 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import styles from './page.module.css';
 import { trackPageView, trackEvent } from '@/lib/analytics';
 import { useAuth } from '@/hooks/useAuth';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import Logo from '@/components/Logo';
 
 const STEPS = [
   {
@@ -59,7 +61,7 @@ export default function Home() {
 
       {/* ── Nav ── */}
       <header className={styles.nav}>
-        <span className={styles.navLogo}>BrandShift</span>
+        <Link href="/" style={{ textDecoration: 'none' }}><Logo size="md" /></Link>
         <div className={styles.navRight}>
           {!isLoading && (
             user ? (
@@ -210,7 +212,7 @@ export default function Home() {
 
       {/* ── Footer ── */}
       <footer className={styles.footer}>
-        <span className={styles.footerLogo}>BrandShift</span>
+        <Logo size="sm" />
         <span className={styles.footerNote}>AI Brand Intelligence for Indian Brands</span>
       </footer>
 

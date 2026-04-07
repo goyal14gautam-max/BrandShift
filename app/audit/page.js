@@ -6,6 +6,7 @@ import {
   Sparkles, Globe, Users, Target, ArrowRight, ChevronLeft,
 } from 'lucide-react';
 import SuggestInput from '@/components/SuggestInput';
+import Logo from '@/components/Logo';
 import styles from './audit.module.css';
 import { trackPageView, trackEvent } from '@/lib/analytics';
 
@@ -390,7 +391,7 @@ export default function Audit() {
 
       {/* Top bar */}
       <header className={styles.topBar}>
-        <span className={styles.navLogo}>BrandShift</span>
+        <Logo size="md" />
       </header>
 
       {/* Progress */}

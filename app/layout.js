@@ -32,8 +32,24 @@ const cormorant = Cormorant_Garamond({
 });
 
 export const metadata = {
-  title: 'BrandShift — AI Brand Audit for Indian Brands',
-  description: 'AI analyses your website, social media, and competitors. Then tells you what to fix and in what order.',
+  title: 'BrandShift',
+  description: 'AI-powered brand intelligence for Indian brands',
+  icons: {
+    icon: '/favicon.png',
+    apple: '/favicon.png',
+  },
+  openGraph: {
+    title: 'BrandShift',
+    description: 'Know exactly where your brand stands.',
+    images: ['/og-image.png'],
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'BrandShift',
+    description: 'Know exactly where your brand stands.',
+    images: ['/og-image.png'],
+  },
 };
 
 export default function RootLayout({ children }) {

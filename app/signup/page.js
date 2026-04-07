@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, CheckCircle } from 'lucide-react';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import Logo from '@/components/Logo';
 import styles from './signup.module.css';
 
 function passwordStrength(pw) {
@@ -61,7 +62,7 @@ export default function Signup() {
   if (done) {
     return (
       <div className={styles.page}>
-        <div className={styles.logo}>BrandShift</div>
+        <div className={styles.logo}><Logo size="lg" /></div>
         <div className={styles.card}>
           <CheckCircle size={48} color="var(--bs-teal)" style={{ display: 'block', margin: '0 auto 20px' }} />
           <h1 className={styles.heading}>Check your email</h1>
@@ -74,7 +75,7 @@ export default function Signup() {
 
   return (
     <div className={styles.page}>
-      <div className={styles.logo}>BrandShift</div>
+      <div className={styles.logo}><Logo size="lg" /></div>
 
       <div className={styles.card}>
         <h1 className={styles.heading}>Create your account</h1>

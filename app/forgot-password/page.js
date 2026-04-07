@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import Logo from '@/components/Logo';
 import styles from './forgot.module.css';
 
 export default function ForgotPassword() {
@@ -28,7 +29,7 @@ export default function ForgotPassword() {
 
   return (
     <div className={styles.page}>
-      <div className={styles.logo}>BrandShift</div>
+      <div className={styles.logo}><Logo size="lg" /></div>
       <div className={styles.card}>
         {sent ? (
           <>
