@@ -3,9 +3,9 @@
 import Image from 'next/image';
 
 const SIZES = {
-  sm: { img: 20, text: '16px' },
-  md: { img: 24, text: '20px' },
-  lg: { img: 32, text: '28px' },
+  sm: { img: 30, text: '24px' },
+  md: { img: 36, text: '30px' },
+  lg: { img: 48, text: '42px' },
 };
 
 export default function Logo({ size = 'md', showText = true, onClick }) {
@@ -17,7 +17,7 @@ export default function Logo({ size = 'md', showText = true, onClick }) {
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: '10px',
+        gap: '12px',
         cursor: onClick ? 'pointer' : 'default',
         textDecoration: 'none',
       }}
@@ -32,11 +32,13 @@ export default function Logo({ size = 'md', showText = true, onClick }) {
       />
       {showText && (
         <span style={{
-          fontFamily: 'var(--font-headline)',
+          fontFamily: 'var(--font-ui)',
           fontSize: text,
           color: 'var(--bs-text-primary)',
-          letterSpacing: '-0.3px',
-          fontWeight: 400,
+          letterSpacing: '0.12em',
+          fontWeight: 700,
+          fontStretch: 'expanded',
+          textTransform: 'uppercase',
         }}>
           BrandShift
         </span>
