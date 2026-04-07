@@ -18,6 +18,17 @@ import FadeIn from '@/components/FadeIn';
 import EffortIcon from '@/components/EffortIcon';
 import ConstitutionPlant from '@/components/ConstitutionPlant';
 import RoadmapPath from '@/components/RoadmapPath';
+import AnimatedBackground from '@/components/AnimatedBackground';
+
+const ANIMATIONS = {
+  focus:   'https://assets5.lottiefiles.com/packages/lf20_kkflmtur.json',
+  city:    'https://assets9.lottiefiles.com/packages/lf20_qmfs6c3i.json',
+  data:    'https://assets3.lottiefiles.com/packages/lf20_qp1q7mct.json',
+  journey: 'https://assets5.lottiefiles.com/packages/lf20_kkflmtur.json',
+  idea:    'https://assets2.lottiefiles.com/packages/lf20_touohxv0.json',
+  voice:   'https://assets4.lottiefiles.com/packages/lf20_0yfsb3a1.json',
+  trend:   'https://assets6.lottiefiles.com/packages/lf20_kyu7xb1v.json',
+};
 
 // ── Helpers ──────────────────────────────────────────────────
 function scoreColor(s) {
@@ -271,50 +282,54 @@ function ContentIdeaCard({ profile, initialIdea }) {
 
   return (
     <div className={styles.toolCard} style={{
+      position: 'relative', overflow: 'hidden',
       background: 'radial-gradient(ellipse at top right, rgba(232,160,48,0.09) 0%, var(--bs-card-dark) 65%)',
       borderColor: 'rgba(232,160,48,0.2)',
     }}>
-      <div className={styles.toolCardHeader}>
-        <div className={styles.toolCardHeaderLeft}>
-          <Lightbulb size={16} style={{ color: 'var(--bs-amber)', flexShrink: 0 }} />
-          <span className={styles.toolCardLabel}>Content Idea</span>
+      <AnimatedBackground src={ANIMATIONS.idea} opacity={0.08} speed={0.5} />
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div className={styles.toolCardHeader}>
+          <div className={styles.toolCardHeaderLeft}>
+            <Lightbulb size={16} style={{ color: 'var(--bs-amber)', flexShrink: 0 }} />
+            <span className={styles.toolCardLabel}>Content Idea</span>
+          </div>
+          <span className={styles.toolPillAmber}>Today</span>
         </div>
-        <span className={styles.toolPillAmber}>Today</span>
-      </div>
 
-      {error && (
-        <div className={styles.toolError}>
-          Could not load — try again
-          <button className={styles.toolErrorRetry} onClick={generateIdea}>Retry</button>
-        </div>
-      )}
-
-      <div className={styles.ideaBody}>
-        {idea ? (
-          <>
-            <p className={styles.ideaText}>{idea.idea}</p>
-            <span className={styles.ideaFormatTag}>
-              {idea.format} · {idea.theme}
-              {idea.why && <span className={styles.ideaTooltip}>Why this works: {idea.why}</span>}
-            </span>
-          </>
-        ) : (
-          <div className={styles.ideaEmpty}>
-            {loading ? 'Generating your idea…' : 'Generate your first content idea'}
+        {error && (
+          <div className={styles.toolError}>
+            Could not load — try again
+            <button className={styles.toolErrorRetry} onClick={generateIdea}>Retry</button>
           </div>
         )}
-      </div>
 
-      <div className={styles.toolCardFooter}>
-        {idea && (
-          <button className={styles.toolBtnGhost} onClick={copyIdea}>
-            <Copy size={12} />
-            {copied ? 'Copied!' : 'Copy'}
+        <div className={styles.ideaBody}>
+          {idea ? (
+            <>
+              <p className={styles.ideaText}>{idea.idea}</p>
+              <span className={styles.ideaFormatTag}>
+                {idea.format} · {idea.theme}
+                {idea.why && <span className={styles.ideaTooltip}>Why this works: {idea.why}</span>}
+              </span>
+            </>
+          ) : (
+            <div className={styles.ideaEmpty}>
+              {loading ? 'Generating your idea…' : 'Generate your first content idea'}
+            </div>
+          )}
+        </div>
+
+        <div className={styles.toolCardFooter}>
+          {idea && (
+            <button className={styles.toolBtnGhost} onClick={copyIdea}>
+              <Copy size={12} />
+              {copied ? 'Copied!' : 'Copy'}
+            </button>
+          )}
+          <button className={styles.toolBtnAmber} onClick={generateIdea} disabled={loading}>
+            {loading ? <><span className={styles.spinner} /> Generating…</> : 'New idea →'}
           </button>
-        )}
-        <button className={styles.toolBtnAmber} onClick={generateIdea} disabled={loading}>
-          {loading ? <><span className={styles.spinner} /> Generating…</> : 'New idea →'}
-        </button>
+        </div>
       </div>
     </div>
   );
@@ -368,75 +383,79 @@ function VoiceCheckCard({ profile, constitutionAnswered, initialUsage, router })
 
   return (
     <div className={styles.toolCard} style={{
+      position: 'relative', overflow: 'hidden',
       background: 'radial-gradient(ellipse at top right, rgba(124,92,191,0.11) 0%, var(--bs-card-dark) 65%)',
       borderColor: 'rgba(124,92,191,0.25)',
     }}>
-      <div className={styles.toolCardHeader}>
-        <div className={styles.toolCardHeaderLeft}>
-          <Keyboard size={16} style={{ color: 'var(--bs-violet)', flexShrink: 0 }} />
-          <span className={styles.toolCardLabel}>Voice Check</span>
+      <AnimatedBackground src={ANIMATIONS.voice} opacity={0.06} speed={0.7} />
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div className={styles.toolCardHeader}>
+          <div className={styles.toolCardHeaderLeft}>
+            <Keyboard size={16} style={{ color: 'var(--bs-violet)', flexShrink: 0 }} />
+            <span className={styles.toolCardLabel}>Voice Check</span>
+          </div>
+          <span className={styles.toolUsageLabel}>{usage.count} / {usage.limit} today</span>
         </div>
-        <span className={styles.toolUsageLabel}>{usage.count} / {usage.limit} today</span>
+
+        {error && (
+          <div className={styles.toolError}>
+            {error}
+            {error.includes('limit') ? null : (
+              <button className={styles.toolErrorRetry} onClick={() => setError('')}>Dismiss</button>
+            )}
+          </div>
+        )}
+
+        {isLocked ? (
+          <div className={styles.toolLockedState}>
+            <Lock size={24} style={{ color: 'var(--bs-text-tertiary)' }} />
+            <p className={styles.toolLockedText}>Complete your Brand Constitution to unlock voice checking</p>
+            <button className={styles.toolLockedLink} onClick={() => router.push('/constitution')}>
+              Complete Constitution →
+            </button>
+          </div>
+        ) : result ? (
+          <>
+            <div className={styles.voiceResultPanels}>
+              <div className={`${styles.voicePanel} ${styles.voicePanelOriginal}`}>
+                <p className={`${styles.voicePanelLabel} ${styles.voicePanelLabelOriginal}`}>YOUR VERSION</p>
+                <p className={styles.voicePanelText}>{result.original}</p>
+              </div>
+              <div className={`${styles.voicePanel} ${styles.voicePanelRewritten}`}>
+                <p className={`${styles.voicePanelLabel} ${styles.voicePanelLabelRewritten}`}>BRAND VOICE</p>
+                <p className={`${styles.voicePanelText} ${styles.voicePanelTextRewritten}`}>{result.rewritten}</p>
+                <span className={styles.voiceScoreBadge}>Voice score: {result.voice_score}/10</span>
+              </div>
+            </div>
+            <div className={styles.voiceResultFooter}>
+              <button className={styles.toolBtnGhost} onClick={copyRewrite}>
+                <Copy size={12} />
+                {copied ? 'Copied!' : 'Copy rewrite'}
+              </button>
+              <button className={styles.voiceResetBtn} onClick={() => { setResult(null); setInputText(''); }}>
+                Try another →
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <textarea
+              className={styles.voiceTextarea}
+              value={inputText}
+              onChange={e => setInputText(e.target.value)}
+              placeholder="Paste any copy — caption, email, website line — and see it rewritten in your brand voice..."
+              disabled={loading}
+            />
+            <button
+              className={styles.voiceCheckBtn}
+              onClick={checkVoice}
+              disabled={!inputText.trim() || loading || usage.count >= usage.limit}
+            >
+              {loading ? <><span className={styles.spinner} /> Checking…</> : 'Check my voice →'}
+            </button>
+          </>
+        )}
       </div>
-
-      {error && (
-        <div className={styles.toolError}>
-          {error}
-          {error.includes('limit') ? null : (
-            <button className={styles.toolErrorRetry} onClick={() => setError('')}>Dismiss</button>
-          )}
-        </div>
-      )}
-
-      {isLocked ? (
-        <div className={styles.toolLockedState}>
-          <Lock size={24} style={{ color: 'var(--bs-text-tertiary)' }} />
-          <p className={styles.toolLockedText}>Complete your Brand Constitution to unlock voice checking</p>
-          <button className={styles.toolLockedLink} onClick={() => router.push('/constitution')}>
-            Complete Constitution →
-          </button>
-        </div>
-      ) : result ? (
-        <>
-          <div className={styles.voiceResultPanels}>
-            <div className={`${styles.voicePanel} ${styles.voicePanelOriginal}`}>
-              <p className={`${styles.voicePanelLabel} ${styles.voicePanelLabelOriginal}`}>YOUR VERSION</p>
-              <p className={styles.voicePanelText}>{result.original}</p>
-            </div>
-            <div className={`${styles.voicePanel} ${styles.voicePanelRewritten}`}>
-              <p className={`${styles.voicePanelLabel} ${styles.voicePanelLabelRewritten}`}>BRAND VOICE</p>
-              <p className={`${styles.voicePanelText} ${styles.voicePanelTextRewritten}`}>{result.rewritten}</p>
-              <span className={styles.voiceScoreBadge}>Voice score: {result.voice_score}/10</span>
-            </div>
-          </div>
-          <div className={styles.voiceResultFooter}>
-            <button className={styles.toolBtnGhost} onClick={copyRewrite}>
-              <Copy size={12} />
-              {copied ? 'Copied!' : 'Copy rewrite'}
-            </button>
-            <button className={styles.voiceResetBtn} onClick={() => { setResult(null); setInputText(''); }}>
-              Try another →
-            </button>
-          </div>
-        </>
-      ) : (
-        <>
-          <textarea
-            className={styles.voiceTextarea}
-            value={inputText}
-            onChange={e => setInputText(e.target.value)}
-            placeholder="Paste any copy — caption, email, website line — and see it rewritten in your brand voice..."
-            disabled={loading}
-          />
-          <button
-            className={styles.voiceCheckBtn}
-            onClick={checkVoice}
-            disabled={!inputText.trim() || loading || usage.count >= usage.limit}
-          >
-            {loading ? <><span className={styles.spinner} /> Checking…</> : 'Check my voice →'}
-          </button>
-        </>
-      )}
     </div>
   );
 }
@@ -478,53 +497,57 @@ function TrendFitCard({ profile, initialTrends, trendsGeneratedAt }) {
 
   return (
     <div className={styles.toolCard} style={{
+      position: 'relative', overflow: 'hidden',
       background: 'radial-gradient(ellipse at top right, rgba(46,196,160,0.08) 0%, var(--bs-card-dark) 65%)',
       borderColor: 'rgba(46,196,160,0.2)',
     }}>
-      <div className={styles.toolCardHeader}>
-        <div className={styles.toolCardHeaderLeft}>
-          <TrendingUp size={16} style={{ color: 'var(--bs-teal)', flexShrink: 0 }} />
-          <span className={styles.toolCardLabel}>Trend Fit</span>
+      <AnimatedBackground src={ANIMATIONS.trend} opacity={0.06} speed={0.5} />
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div className={styles.toolCardHeader}>
+          <div className={styles.toolCardHeaderLeft}>
+            <TrendingUp size={16} style={{ color: 'var(--bs-teal)', flexShrink: 0 }} />
+            <span className={styles.toolCardLabel}>Trend Fit</span>
+          </div>
+          <span className={styles.toolPillTeal}>This week</span>
         </div>
-        <span className={styles.toolPillTeal}>This week</span>
-      </div>
 
-      {error && (
-        <div className={styles.toolError}>
-          Could not load — try again
-          <button className={styles.toolErrorRetry} onClick={refreshTrends}>Retry</button>
-        </div>
-      )}
+        {error && (
+          <div className={styles.toolError}>
+            Could not load — try again
+            <button className={styles.toolErrorRetry} onClick={refreshTrends}>Retry</button>
+          </div>
+        )}
 
-      <div className={styles.trendList}>
-        {trends.length > 0 ? trends.slice(0, 3).map((trend, i) => (
-          <div key={i} className={styles.trendRow} onClick={() => setExpandedIdx(expandedIdx === i ? null : i)}>
-            <div className={styles.trendRowMain}>
-              <span className={styles.trendName}>{trend.name}</span>
-              <span className={`${styles.trendFitBadge} ${fitClass[trend.fit] || styles.trendFitTest}`}>
-                {fitLabel[trend.fit] || 'Test it'}
-              </span>
+        <div className={styles.trendList}>
+          {trends.length > 0 ? trends.slice(0, 3).map((trend, i) => (
+            <div key={i} className={styles.trendRow} onClick={() => setExpandedIdx(expandedIdx === i ? null : i)}>
+              <div className={styles.trendRowMain}>
+                <span className={styles.trendName}>{trend.name}</span>
+                <span className={`${styles.trendFitBadge} ${fitClass[trend.fit] || styles.trendFitTest}`}>
+                  {fitLabel[trend.fit] || 'Test it'}
+                </span>
+              </div>
+              {expandedIdx === i && trend.reason && (
+                <p className={styles.trendReason}>{trend.reason}</p>
+              )}
             </div>
-            {expandedIdx === i && trend.reason && (
-              <p className={styles.trendReason}>{trend.reason}</p>
-            )}
-          </div>
-        )) : (
-          <div className={styles.trendEmpty}>
-            {loading ? 'Checking trends…' : 'Tap refresh to see current trends'}
-          </div>
-        )}
-      </div>
+          )) : (
+            <div className={styles.trendEmpty}>
+              {loading ? 'Checking trends…' : 'Tap refresh to see current trends'}
+            </div>
+          )}
+        </div>
 
-      <div className={styles.trendFooter}>
-        <button className={styles.toolBtnGhost} onClick={refreshTrends} disabled={loading}>
-          {loading ? <><span className={styles.spinner} /> Checking…</> : 'Refresh trends →'}
-        </button>
-        {daysSince !== null && (
-          <span className={styles.trendLastUpdated}>
-            {daysSince === 0 ? 'Updated today' : `Updated ${daysSince}d ago`}
-          </span>
-        )}
+        <div className={styles.trendFooter}>
+          <button className={styles.toolBtnGhost} onClick={refreshTrends} disabled={loading}>
+            {loading ? <><span className={styles.spinner} /> Checking…</> : 'Refresh trends →'}
+          </button>
+          {daysSince !== null && (
+            <span className={styles.trendLastUpdated}>
+              {daysSince === 0 ? 'Updated today' : `Updated ${daysSince}d ago`}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -673,6 +696,7 @@ export default function Dashboard() {
         {/* ── 1. Today's focus ── */}
         <FadeIn delay={0}>
         <div className={styles.focusCard} style={{ position: 'relative', overflow: 'hidden', borderColor: `${brandColor}33` }}>
+          <AnimatedBackground src={ANIMATIONS.focus} opacity={0.06} speed={0.4} />
           {/* Background treatment */}
           <div style={{
             position: 'absolute', inset: 0,
@@ -729,7 +753,9 @@ export default function Dashboard() {
         <div className={styles.scoreBriefGrid}>
 
           {/* Score card */}
-          <div className={styles.card}>
+          <div className={styles.card} style={{ position: 'relative', overflow: 'hidden' }}>
+            <AnimatedBackground src={ANIMATIONS.data} opacity={0.05} speed={0.6} />
+            <div style={{ position: 'relative', zIndex: 1 }}>
             <div className={styles.cardHeaderRow}>
               <span className={styles.cardLabel}>Brand Score</span>
               <span className={styles.cardMeta}>Refreshes Monday</span>
@@ -763,10 +789,12 @@ export default function Dashboard() {
                 </div>
               ))}
             </div>
+            </div>
           </div>
 
           {/* Monday brief card */}
           <div className={styles.card} style={{ position: 'relative', overflow: 'hidden' }}>
+            <AnimatedBackground src={ANIMATIONS.city} opacity={0.05} speed={0.3} blur={true} />
             {/* Newsprint texture when brief exists */}
             {latestBrief && (
               <div style={{
@@ -839,7 +867,9 @@ export default function Dashboard() {
         <div className={styles.roadmapConstitGrid}>
 
           {/* Roadmap card */}
-          <div className={styles.card}>
+          <div className={styles.card} style={{ position: 'relative', overflow: 'hidden' }}>
+            <AnimatedBackground src={ANIMATIONS.journey} opacity={0.04} speed={0.3} />
+            <div style={{ position: 'relative', zIndex: 1 }}>
             <div className={styles.roadmapHeader}>
               <span className={styles.roadmapTitle}>Roadmap</span>
               <span className={styles.roadmapWeekLabel}>Week {currentWeek} of 8</span>
@@ -883,6 +913,7 @@ export default function Dashboard() {
                   View full roadmap →
                 </span>
               </div>
+            </div>
             </div>
           </div>
 
