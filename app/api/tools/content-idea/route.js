@@ -66,11 +66,15 @@ Return ONLY this JSON, no other text:
     const idea = JSON.parse(jsonMatch[0]);
     idea.generated_at = new Date().toISOString();
 
-    await updateBrandProfile(brandName, { latest_content_idea: idea });
+    try {
+      await updateBrandProfile(brandName, { latest_content_idea: idea });
+    } catch (saveErr) {
+      console.error('content-idea save error (column may not exist yet):', saveErr.message);
+    }
 
     return NextResponse.json({ idea });
   } catch (err) {
-    console.error('content-idea error:', err);
+    console.error('content-idea error:', err.message, err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

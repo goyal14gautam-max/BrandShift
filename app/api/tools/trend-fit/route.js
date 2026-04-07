@@ -79,17 +79,22 @@ fit must be exactly one of: "use", "avoid", "test"`;
 
     const parsed = JSON.parse(jsonMatch[0]);
 
-    await updateBrandProfile(brandName, {
-      latest_trends: parsed.trends,
-      trends_generated_at: new Date().toISOString(),
-    });
+    // Save to DB — don't let save failure break the response
+    try {
+      await updateBrandProfile(brandName, {
+        latest_trends: parsed.trends,
+        trends_generated_at: new Date().toISOString(),
+      });
+    } catch (saveErr) {
+      console.error('trend-fit save error (columns may not exist yet):', saveErr.message);
+    }
 
     return NextResponse.json({
       trends: parsed.trends,
       generated_for_week: parsed.generated_for_week,
     });
   } catch (err) {
-    console.error('trend-fit error:', err);
+    console.error('trend-fit error:', err.message, err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
