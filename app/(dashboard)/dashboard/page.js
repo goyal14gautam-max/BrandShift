@@ -8,12 +8,16 @@ import {
   Lightbulb, Keyboard, TrendingUp, Copy, Lock,
 } from 'lucide-react';
 import {
-  ResponsiveContainer, LineChart, Line, XAxis, YAxis,
+  ResponsiveContainer, AreaChart, Area, XAxis, YAxis,
   CartesianGrid, Tooltip as RechartsTooltip,
 } from 'recharts';
 import { useDashboard } from '@/hooks/useDashboard';
 import styles from './dashboard.module.css';
 import { trackPageView, trackEvent } from '@/lib/analytics';
+import FadeIn from '@/components/FadeIn';
+import EffortIcon from '@/components/EffortIcon';
+import ConstitutionPlant from '@/components/ConstitutionPlant';
+import RoadmapPath from '@/components/RoadmapPath';
 
 // ── Helpers ──────────────────────────────────────────────────
 function scoreColor(s) {
@@ -51,7 +55,7 @@ function truncate(str, n) {
   return str.length <= n ? str : str.slice(0, n) + '…';
 }
 
-// ── Score ring (80px) ────────────────────────────────────────
+// ── Score ring (80px) with glow ──────────────────────────────
 function MiniScoreRing({ score }) {
   const [offset, setOffset] = useState(251.2);
   const circ = 251.2;
@@ -62,19 +66,42 @@ function MiniScoreRing({ score }) {
   }, [score, circ]);
 
   const col = scoreColor(score);
+  const glowColor =
+    score >= 65 ? 'rgba(46,196,160,0.18)' :
+    score >= 45 ? 'rgba(232,160,48,0.18)' :
+                  'rgba(212,24,61,0.14)';
+  const pulsing = score < 45;
+
   return (
-    <svg viewBox="0 0 100 100" width="80" height="80" style={{ flexShrink: 0 }}>
-      <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="7" />
-      <circle cx="50" cy="50" r="40" fill="none"
-        stroke={col} strokeWidth="7" strokeLinecap="round"
-        strokeDasharray={circ} strokeDashoffset={offset}
-        style={{ transition: 'stroke-dashoffset 1s ease-out', transformOrigin: 'center', transform: 'rotate(-90deg)' }}
-      />
-      <text x="50" y="55" textAnchor="middle"
-        style={{ fontFamily: 'var(--font-mono)', fontSize: 20, fill: col }}>
-        {score ?? '—'}
-      </text>
-    </svg>
+    <div style={{ position: 'relative', width: 80, height: 80, flexShrink: 0 }}>
+      {/* Glow halo */}
+      <div style={{
+        position: 'absolute', top: '50%', left: '50%',
+        transform: 'translate(-50%,-50%)',
+        width: 110, height: 110, borderRadius: '50%',
+        background: `radial-gradient(circle, ${glowColor} 0%, transparent 70%)`,
+        pointerEvents: 'none', zIndex: 0,
+        animation: pulsing ? 'pulse-glow 2s ease-in-out infinite' : 'none',
+      }} />
+      <svg viewBox="0 0 100 100" width="80" height="80" style={{ position: 'relative', zIndex: 1 }}>
+        <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="7" />
+        <circle cx="50" cy="50" r="40" fill="none"
+          stroke={col} strokeWidth="7" strokeLinecap="round"
+          strokeDasharray={circ} strokeDashoffset={offset}
+          style={{ transition: 'stroke-dashoffset 1s ease-out', transformOrigin: 'center', transform: 'rotate(-90deg)' }}
+        />
+        <text x="50" y="55" textAnchor="middle"
+          style={{ fontFamily: 'var(--font-mono)', fontSize: 20, fill: col }}>
+          {score ?? '—'}
+        </text>
+      </svg>
+      <style>{`
+        @keyframes pulse-glow {
+          0%, 100% { opacity: 0.6; }
+          50%       { opacity: 1; }
+        }
+      `}</style>
+    </div>
   );
 }
 
@@ -243,7 +270,10 @@ function ContentIdeaCard({ profile, initialIdea }) {
   }
 
   return (
-    <div className={styles.toolCard}>
+    <div className={styles.toolCard} style={{
+      background: 'radial-gradient(ellipse at top right, rgba(232,160,48,0.09) 0%, var(--bs-card-dark) 65%)',
+      borderColor: 'rgba(232,160,48,0.2)',
+    }}>
       <div className={styles.toolCardHeader}>
         <div className={styles.toolCardHeaderLeft}>
           <Lightbulb size={16} style={{ color: 'var(--bs-amber)', flexShrink: 0 }} />
@@ -337,7 +367,10 @@ function VoiceCheckCard({ profile, constitutionAnswered, initialUsage, router })
   }
 
   return (
-    <div className={styles.toolCard}>
+    <div className={styles.toolCard} style={{
+      background: 'radial-gradient(ellipse at top right, rgba(124,92,191,0.11) 0%, var(--bs-card-dark) 65%)',
+      borderColor: 'rgba(124,92,191,0.25)',
+    }}>
       <div className={styles.toolCardHeader}>
         <div className={styles.toolCardHeaderLeft}>
           <Keyboard size={16} style={{ color: 'var(--bs-violet)', flexShrink: 0 }} />
@@ -444,7 +477,10 @@ function TrendFitCard({ profile, initialTrends, trendsGeneratedAt }) {
   const fitLabel = { use: 'Use it', avoid: 'Avoid', test: 'Test it' };
 
   return (
-    <div className={styles.toolCard}>
+    <div className={styles.toolCard} style={{
+      background: 'radial-gradient(ellipse at top right, rgba(46,196,160,0.08) 0%, var(--bs-card-dark) 65%)',
+      borderColor: 'rgba(46,196,160,0.2)',
+    }}>
       <div className={styles.toolCardHeader}>
         <div className={styles.toolCardHeaderLeft}>
           <TrendingUp size={16} style={{ color: 'var(--bs-teal)', flexShrink: 0 }} />
@@ -606,6 +642,9 @@ export default function Dashboard() {
   // Today task index in original array
   const todayTaskIdx = profile?.tasks?.findIndex(t => t.status === 'todo') ?? -1;
 
+  // Brand color (from DB or default violet)
+  const brandColor = profile?.brand_color || '#7C5CBF';
+
   if (isLoading) return <LoadingSkeleton />;
 
   if (error) {
@@ -618,7 +657,7 @@ export default function Dashboard() {
 
   return (
     <>
-    <main className={styles.mainContent}>
+    <main className={styles.mainContent} style={{ '--bs-brand': brandColor }}>
 
         {/* ── Top bar ── */}
         <div className={styles.topBar}>
@@ -632,7 +671,15 @@ export default function Dashboard() {
         </div>
 
         {/* ── 1. Today's focus ── */}
-        <div className={styles.focusCard}>
+        <FadeIn delay={0}>
+        <div className={styles.focusCard} style={{ position: 'relative', overflow: 'hidden', borderColor: `${brandColor}33` }}>
+          {/* Background treatment */}
+          <div style={{
+            position: 'absolute', inset: 0,
+            backgroundImage: 'radial-gradient(circle at 20% 50%, rgba(232,98,42,0.06) 0%, transparent 50%), radial-gradient(circle at 80% 50%, rgba(124,92,191,0.04) 0%, transparent 50%)',
+            pointerEvents: 'none', zIndex: 0,
+          }} />
+          <div style={{ position: 'relative', zIndex: 1 }}>
           {todayTask ? (
             <div className={styles.focusInner}>
               <div className={styles.focusLeft}>
@@ -667,9 +714,18 @@ export default function Dashboard() {
               <span>All tasks for this week are complete</span>
             </div>
           )}
+          {/* Effort illustration */}
+          {todayTask?.effort && (
+            <div style={{ position: 'absolute', bottom: 12, right: 16, opacity: 0.45, zIndex: 1 }}>
+              <EffortIcon effort={todayTask.effort} size={36} />
+            </div>
+          )}
+          </div>
         </div>
+        </FadeIn>
 
         {/* ── 2. Score + Monday brief ── */}
+        <FadeIn delay={100}>
         <div className={styles.scoreBriefGrid}>
 
           {/* Score card */}
@@ -710,7 +766,16 @@ export default function Dashboard() {
           </div>
 
           {/* Monday brief card */}
-          <div className={styles.card}>
+          <div className={styles.card} style={{ position: 'relative', overflow: 'hidden' }}>
+            {/* Newsprint texture when brief exists */}
+            {latestBrief && (
+              <div style={{
+                position: 'absolute', inset: 0,
+                backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 23px, rgba(255,255,255,0.018) 23px, rgba(255,255,255,0.018) 24px)',
+                pointerEvents: 'none', zIndex: 0,
+              }} />
+            )}
+            <div style={{ position: 'relative', zIndex: 1 }}>
             <div className={styles.cardHeaderRow}>
               <span className={styles.briefTitle}>Monday Brief</span>
               {isBriefNew && <span className={styles.newBadge}>New</span>}
@@ -763,11 +828,14 @@ export default function Dashboard() {
                 </button>
               </div>
             )}
+            </div>
           </div>
 
         </div>
+        </FadeIn>
 
         {/* ── 3. Roadmap + Constitution ── */}
+        <FadeIn delay={200}>
         <div className={styles.roadmapConstitGrid}>
 
           {/* Roadmap card */}
@@ -777,109 +845,89 @@ export default function Dashboard() {
               <span className={styles.roadmapWeekLabel}>Week {currentWeek} of 8</span>
             </div>
 
-            <div className={styles.weekDots}>
-              {Array.from({ length: 8 }, (_, i) => {
-                const w = i + 1;
-                const done    = w < currentWeek;
-                const current = w === currentWeek;
-                return (
-                  <div key={w} className={`${styles.weekDot} ${done ? styles.weekDotDone : current ? styles.weekDotCurrent : styles.weekDotFuture}`}>
-                    {done
-                      ? <svg width="10" height="10" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="var(--bs-teal)" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                      : <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>{w}</span>}
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className={styles.taskList}>
-              {weekTasks.length > 0 ? weekTasks.map((task, i) => {
-                const isDone = task.status === 'done';
-                const origIdx = profile?.tasks?.indexOf(task) ?? i;
-                return (
-                  <div key={i} className={styles.taskItem}>
-                    <div
-                      className={`${styles.taskCheck} ${isDone ? styles.taskCheckDone : ''}`}
-                      onClick={() => !isDone && openModal(origIdx)}
-                    >
-                      {isDone && <svg width="10" height="10" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>}
-                    </div>
-                    <p className={`${styles.taskText} ${isDone ? styles.taskTextDone : ''}`}>
-                      {task.task}
+            <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', marginTop: 8 }}>
+              <div style={{ width: 80, flexShrink: 0 }}>
+                <RoadmapPath currentWeek={currentWeek} tasks={profile?.tasks || []} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className={styles.taskList}>
+                  {weekTasks.length > 0 ? weekTasks.map((task, i) => {
+                    const isDone = task.status === 'done';
+                    const origIdx = profile?.tasks?.indexOf(task) ?? i;
+                    return (
+                      <div key={i} className={styles.taskItem}>
+                        <div
+                          className={`${styles.taskCheck} ${isDone ? styles.taskCheckDone : ''}`}
+                          onClick={() => !isDone && openModal(origIdx)}
+                        >
+                          {isDone && <svg width="10" height="10" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                        </div>
+                        <p className={`${styles.taskText} ${isDone ? styles.taskTextDone : ''}`}>{task.task}</p>
+                      </div>
+                    );
+                  }) : (
+                    <p style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: 'var(--bs-text-tertiary)' }}>
+                      No tasks for this week yet.
                     </p>
-                  </div>
-                );
-              }) : (
-                <p style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: 'var(--bs-text-tertiary)' }}>
-                  No tasks for this week yet.
-                </p>
-              )}
-            </div>
-
-            {totalTasks > 0 && (
-              <>
-                <div className={styles.taskProgressBar}>
-                  <div className={styles.taskProgressFill} style={{ width: `${(doneCount / totalTasks) * 100}%` }} />
+                  )}
                 </div>
-                <p className={styles.taskProgressLabel}>{doneCount} of {totalTasks} tasks complete this week</p>
-              </>
-            )}
-
-            <span className={styles.viewRoadmapLink} onClick={() => router.push('/roadmap')}>
-              View full roadmap →
-            </span>
+                {totalTasks > 0 && (
+                  <>
+                    <div className={styles.taskProgressBar}>
+                      <div className={styles.taskProgressFill} style={{ width: `${(doneCount / totalTasks) * 100}%` }} />
+                    </div>
+                    <p className={styles.taskProgressLabel}>{doneCount} of {totalTasks} tasks complete this week</p>
+                  </>
+                )}
+                <span className={styles.viewRoadmapLink} onClick={() => router.push('/roadmap')}>
+                  View full roadmap →
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* Constitution card */}
           <div className={styles.card}>
             <p className={styles.constitTitle}>Brand Constitution</p>
-
-            <div className={styles.constitProgressRow}>
-              <span className={styles.constitProgressLabel}>
-                {constitutionProgress.answered} of 20 questions answered
-              </span>
-              <span className={styles.constitPct}>
-                {Math.round((constitutionProgress.answered / 20) * 100)}%
-              </span>
-            </div>
-            <div className={styles.constitBar}>
-              <div className={styles.constitBarFill}
-                style={{ width: `${(constitutionProgress.answered / 20) * 100}%` }} />
-            </div>
-
-            {constitutionProgress.answered < 5 && (
-              <div className={styles.constitPrompt}>
-                <p className={styles.constitPromptText}>
-                  Complete your Brand Constitution to unlock personalised insights
-                </p>
-                <button className={styles.constitPromptBtn} onClick={() => router.push('/constitution')}>
-                  Complete now →
-                </button>
+            <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', marginTop: 8 }}>
+              <ConstitutionPlant answered={constitutionProgress.answered} total={20} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {constitutionProgress.answered < 5 && (
+                  <div className={styles.constitPrompt}>
+                    <p className={styles.constitPromptText}>
+                      Complete your Brand Constitution to unlock personalised insights
+                    </p>
+                    <button className={styles.constitPromptBtn} onClick={() => router.push('/constitution')}>
+                      Complete now →
+                    </button>
+                  </div>
+                )}
+                {todayQuestion && (
+                  <div className={styles.questionBox}>
+                    <p className={styles.questionLabel}>TODAY'S QUESTION</p>
+                    <p className={styles.questionText}>{todayQuestion.question}</p>
+                    <textarea
+                      className={styles.questionTextarea}
+                      value={answer}
+                      onChange={e => setAnswer(e.target.value)}
+                      placeholder="Answer in 2 minutes..."
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+                      <button className={styles.questionSaveBtn} onClick={handleSaveAnswer}>
+                        {answerSaved ? 'Saved ✓' : 'Save'}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-
-            {todayQuestion && (
-              <div className={styles.questionBox}>
-                <p className={styles.questionLabel}>TODAY'S QUESTION</p>
-                <p className={styles.questionText}>{todayQuestion.question}</p>
-                <textarea
-                  className={styles.questionTextarea}
-                  value={answer}
-                  onChange={e => setAnswer(e.target.value)}
-                  placeholder="Answer in 2 minutes..."
-                />
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-                  <button className={styles.questionSaveBtn} onClick={handleSaveAnswer}>
-                    {answerSaved ? 'Saved ✓' : 'Save'}
-                  </button>
-                </div>
-              </div>
-            )}
+            </div>
           </div>
 
         </div>
+        </FadeIn>
 
         {/* ── 4. Brand Tools ── */}
+        <FadeIn delay={300}>
         <div style={{ marginBottom: 4 }}>
           <p className={styles.brandToolsHeading}>Brand Tools</p>
           <p className={styles.brandToolsSub}>Daily tools personalised to your brand</p>
@@ -898,18 +946,25 @@ export default function Dashboard() {
             trendsGeneratedAt={profile?.trends_generated_at}
           />
         </div>
+        </FadeIn>
 
         {/* ── 5. Score history ── */}
+        <FadeIn delay={400}>
         <div className={styles.card} style={{ marginBottom: 20 }}>
           <div className={styles.cardHeaderRow}>
             <span className={styles.briefTitle}>Score history</span>
             <span className={styles.cardMeta}>Updates every Monday</span>
           </div>
-
           {scoreHistory.length >= 3 ? (
             <div style={{ marginTop: 16 }}>
               <ResponsiveContainer width="100%" height={120}>
-                <LineChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                <AreaChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="scoreGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor="#7C5CBF" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#7C5CBF" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid horizontal vertical={false} stroke="rgba(255,255,255,0.04)" />
                   <XAxis
                     dataKey="date"
@@ -923,14 +978,15 @@ export default function Dashboard() {
                     axisLine={false} tickLine={false} width={28}
                   />
                   <RechartsTooltip content={<ChartTooltip />} />
-                  <Line
+                  <Area
                     type="monotone" dataKey="overall_score"
                     stroke="#7C5CBF" strokeWidth={2}
+                    fill="url(#scoreGradient)"
                     dot={{ fill: '#7C5CBF', r: 4, strokeWidth: 2, stroke: '#08080E' }}
                     activeDot={{ r: 6 }}
-                    isAnimationActive
+                    isAnimationActive animationDuration={1200}
                   />
-                </LineChart>
+                </AreaChart>
               </ResponsiveContainer>
               <p style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--bs-text-tertiary)', textAlign: 'right', marginTop: 8 }}>
                 Each point = one week · Score updates every Monday
@@ -945,8 +1001,10 @@ export default function Dashboard() {
             </div>
           )}
         </div>
+        </FadeIn>
 
         {/* ── 6. Quick actions ── */}
+        <FadeIn delay={500}>
         <div className={styles.quickActionsGrid}>
           {[
             { icon: FileText,  label: 'Stakeholder report', sub: 'Download PDF',        href: '/reports'      },
@@ -961,6 +1019,7 @@ export default function Dashboard() {
             </div>
           ))}
         </div>
+        </FadeIn>
 
       </main>
 
