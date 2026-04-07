@@ -804,6 +804,485 @@
   opacity: 0.9;
 }
 
+/* ── Brand Tools ─────────────────────────────────────────────── */
+.brandToolsHeading {
+  font-family: var(--font-headline);
+  font-size: 22px;
+  color: var(--bs-text-primary);
+  margin-bottom: 4px;
+}
+
+.brandToolsSub {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--bs-text-secondary);
+  margin-bottom: 20px;
+}
+
+.toolsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.toolCard {
+  background: var(--bs-card-dark);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius);
+  padding: 20px;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+}
+
+.toolCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.toolCardHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.toolCardLabel {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--bs-text-primary);
+}
+
+.toolPillAmber {
+  background: rgba(232, 160, 48, 0.12);
+  color: var(--bs-amber);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 3px 10px;
+  border-radius: 100px;
+}
+
+.toolPillTeal {
+  background: rgba(46, 196, 160, 0.12);
+  color: var(--bs-teal);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 3px 10px;
+  border-radius: 100px;
+}
+
+.toolUsageLabel {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--bs-text-tertiary);
+}
+
+/* Content idea card */
+.ideaBody {
+  flex: 1;
+}
+
+.ideaText {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--bs-text-primary);
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+.ideaFormatTag {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--bs-text-tertiary);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 3px 10px;
+  border-radius: 100px;
+  cursor: default;
+  position: relative;
+}
+
+.ideaFormatTag:hover .ideaTooltip {
+  display: block;
+}
+
+.ideaTooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  background: #15152A;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--bs-text-secondary);
+  line-height: 1.5;
+  white-space: normal;
+  width: 200px;
+  z-index: 10;
+}
+
+.ideaEmpty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--bs-text-tertiary);
+  text-align: center;
+  padding: 20px 0;
+}
+
+.toolCardFooter {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 12px;
+}
+
+.toolBtnGhost {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius);
+  padding: 7px 14px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--bs-text-secondary);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.toolBtnGhost:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.toolBtnGhost:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.toolBtnAmber {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(232, 160, 48, 0.12);
+  border: none;
+  border-radius: var(--radius);
+  padding: 7px 14px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--bs-amber);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.toolBtnAmber:hover:not(:disabled) {
+  background: rgba(232, 160, 48, 0.2);
+}
+
+.toolBtnAmber:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Voice check card */
+.voiceTextarea {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--bs-text-primary);
+  height: 80px;
+  resize: none;
+  outline: none;
+  transition: border-color 0.15s;
+  margin-bottom: 10px;
+  display: block;
+}
+
+.voiceTextarea::placeholder {
+  color: var(--bs-text-tertiary);
+}
+
+.voiceTextarea:focus {
+  border-color: var(--bs-violet);
+}
+
+.voiceCheckBtn {
+  width: 100%;
+  background: var(--bs-violet);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  padding: 10px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.voiceCheckBtn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.voiceCheckBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.voiceResultPanels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  flex: 1;
+}
+
+.voicePanel {
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+
+.voicePanelOriginal {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.voicePanelRewritten {
+  background: rgba(124, 92, 191, 0.06);
+  border: 1px solid rgba(124, 92, 191, 0.15);
+}
+
+.voicePanelLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+
+.voicePanelLabelOriginal {
+  color: var(--bs-text-tertiary);
+}
+
+.voicePanelLabelRewritten {
+  color: var(--bs-violet);
+}
+
+.voicePanelText {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--bs-text-secondary);
+  line-height: 1.5;
+}
+
+.voicePanelTextRewritten {
+  color: var(--bs-text-primary);
+}
+
+.voiceScoreBadge {
+  display: inline-block;
+  background: rgba(46, 196, 160, 0.12);
+  color: var(--bs-teal);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 100px;
+  margin-top: 8px;
+}
+
+.voiceResultFooter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.voiceResetBtn {
+  background: none;
+  border: none;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--bs-text-tertiary);
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s;
+}
+
+.voiceResetBtn:hover {
+  color: var(--bs-text-secondary);
+}
+
+/* Voice locked state */
+.toolLockedState {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+  padding: 12px 0;
+}
+
+.toolLockedText {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--bs-text-tertiary);
+  line-height: 1.5;
+  max-width: 180px;
+}
+
+.toolLockedLink {
+  background: none;
+  border: none;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--bs-violet);
+  cursor: pointer;
+  padding: 0;
+}
+
+/* Trend fit card */
+.trendList {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.trendRow {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+}
+
+.trendRow:last-child {
+  border-bottom: none;
+}
+
+.trendRowMain {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.trendName {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--bs-text-primary);
+  flex: 1;
+}
+
+.trendFitBadge {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 100px;
+  flex-shrink: 0;
+}
+
+.trendFitUse {
+  background: rgba(46, 196, 160, 0.12);
+  color: var(--bs-teal);
+}
+
+.trendFitAvoid {
+  background: rgba(212, 24, 61, 0.1);
+  color: #d4183d;
+}
+
+.trendFitTest {
+  background: rgba(232, 160, 48, 0.12);
+  color: var(--bs-amber);
+}
+
+.trendReason {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--bs-text-secondary);
+  line-height: 1.5;
+  padding: 6px 0 4px;
+}
+
+.trendEmpty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--bs-text-tertiary);
+  text-align: center;
+}
+
+.trendFooter {
+  display: flex;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 12px;
+}
+
+.trendLastUpdated {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--bs-text-tertiary);
+  margin-left: 10px;
+}
+
+/* Tool error state */
+.toolError {
+  background: rgba(212, 24, 61, 0.08);
+  border: 1px solid rgba(212, 24, 61, 0.2);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: #d4183d;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.toolErrorRetry {
+  background: none;
+  border: none;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: #d4183d;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  flex-shrink: 0;
+}
+
+/* Spinner */
+.spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ── Chart ───────────────────────────────────────────────────── */
 .chartTooltip {
   background: #15152A;
@@ -1098,6 +1577,10 @@
 
 /* ── Responsive ──────────────────────────────────────────────── */
 @media (max-width: 768px) {
+  .toolsGrid {
+    grid-template-columns: 1fr;
+  }
+
   .sidebar {
     display: none;
   }
@@ -1178,5 +1661,13 @@
 
   .quickActionsGrid {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .toolsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .toolsGrid > :nth-child(3) {
+    grid-column: 1 / -1;
   }
 }

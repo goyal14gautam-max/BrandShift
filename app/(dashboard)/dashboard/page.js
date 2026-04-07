@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import {
   LayoutDashboard, BarChart2, FileText, BookOpen, Map,
   Flame, CheckCircle, Calendar, Search, ArrowUp, ArrowDown,
+  Lightbulb, Keyboard, TrendingUp, Copy, Lock,
 } from 'lucide-react';
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis,
@@ -208,11 +209,297 @@ function ExitModal({ taskText, onSave, onClose }) {
   );
 }
 
+// ── Content Idea Card ─────────────────────────────────────────
+function ContentIdeaCard({ profile, initialIdea }) {
+  const [idea, setIdea] = useState(initialIdea);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  async function generateIdea() {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/tools/content-idea', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brandName: profile.brand_name }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      setIdea(data.idea);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function copyIdea() {
+    if (!idea?.idea) return;
+    navigator.clipboard.writeText(idea.idea);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+
+  return (
+    <div className={styles.toolCard}>
+      <div className={styles.toolCardHeader}>
+        <div className={styles.toolCardHeaderLeft}>
+          <Lightbulb size={16} style={{ color: 'var(--bs-amber)', flexShrink: 0 }} />
+          <span className={styles.toolCardLabel}>Content Idea</span>
+        </div>
+        <span className={styles.toolPillAmber}>Today</span>
+      </div>
+
+      {error && (
+        <div className={styles.toolError}>
+          Could not load — try again
+          <button className={styles.toolErrorRetry} onClick={generateIdea}>Retry</button>
+        </div>
+      )}
+
+      <div className={styles.ideaBody}>
+        {idea ? (
+          <>
+            <p className={styles.ideaText}>{idea.idea}</p>
+            <span className={styles.ideaFormatTag}>
+              {idea.format} · {idea.theme}
+              {idea.why && <span className={styles.ideaTooltip}>Why this works: {idea.why}</span>}
+            </span>
+          </>
+        ) : (
+          <div className={styles.ideaEmpty}>
+            {loading ? 'Generating your idea…' : 'Generate your first content idea'}
+          </div>
+        )}
+      </div>
+
+      <div className={styles.toolCardFooter}>
+        {idea && (
+          <button className={styles.toolBtnGhost} onClick={copyIdea}>
+            <Copy size={12} />
+            {copied ? 'Copied!' : 'Copy'}
+          </button>
+        )}
+        <button className={styles.toolBtnAmber} onClick={generateIdea} disabled={loading}>
+          {loading ? <><span className={styles.spinner} /> Generating…</> : 'New idea →'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Voice Check Card ──────────────────────────────────────────
+function VoiceCheckCard({ profile, constitutionAnswered, initialUsage, router }) {
+  const [inputText, setInputText] = useState('');
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [copied, setCopied] = useState(false);
+  const [usage, setUsage] = useState(initialUsage);
+
+  const isLocked = constitutionAnswered < 5;
+
+  async function checkVoice() {
+    if (!inputText.trim() || loading) return;
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/tools/voice-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brandName: profile.brand_name, inputText }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.error === 'daily_limit_reached') {
+          setError('Daily limit of 10 rewrites reached. Resets tomorrow.');
+        } else {
+          throw new Error(data.error || 'Failed');
+        }
+        return;
+      }
+      setResult({ original: inputText, ...data });
+      if (data.usage) setUsage(data.usage);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function copyRewrite() {
+    if (!result?.rewritten) return;
+    navigator.clipboard.writeText(result.rewritten);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+
+  return (
+    <div className={styles.toolCard}>
+      <div className={styles.toolCardHeader}>
+        <div className={styles.toolCardHeaderLeft}>
+          <Keyboard size={16} style={{ color: 'var(--bs-violet)', flexShrink: 0 }} />
+          <span className={styles.toolCardLabel}>Voice Check</span>
+        </div>
+        <span className={styles.toolUsageLabel}>{usage.count} / {usage.limit} today</span>
+      </div>
+
+      {error && (
+        <div className={styles.toolError}>
+          {error}
+          {error.includes('limit') ? null : (
+            <button className={styles.toolErrorRetry} onClick={() => setError('')}>Dismiss</button>
+          )}
+        </div>
+      )}
+
+      {isLocked ? (
+        <div className={styles.toolLockedState}>
+          <Lock size={24} style={{ color: 'var(--bs-text-tertiary)' }} />
+          <p className={styles.toolLockedText}>Complete your Brand Constitution to unlock voice checking</p>
+          <button className={styles.toolLockedLink} onClick={() => router.push('/constitution')}>
+            Complete Constitution →
+          </button>
+        </div>
+      ) : result ? (
+        <>
+          <div className={styles.voiceResultPanels}>
+            <div className={`${styles.voicePanel} ${styles.voicePanelOriginal}`}>
+              <p className={`${styles.voicePanelLabel} ${styles.voicePanelLabelOriginal}`}>YOUR VERSION</p>
+              <p className={styles.voicePanelText}>{result.original}</p>
+            </div>
+            <div className={`${styles.voicePanel} ${styles.voicePanelRewritten}`}>
+              <p className={`${styles.voicePanelLabel} ${styles.voicePanelLabelRewritten}`}>BRAND VOICE</p>
+              <p className={`${styles.voicePanelText} ${styles.voicePanelTextRewritten}`}>{result.rewritten}</p>
+              <span className={styles.voiceScoreBadge}>Voice score: {result.voice_score}/10</span>
+            </div>
+          </div>
+          <div className={styles.voiceResultFooter}>
+            <button className={styles.toolBtnGhost} onClick={copyRewrite}>
+              <Copy size={12} />
+              {copied ? 'Copied!' : 'Copy rewrite'}
+            </button>
+            <button className={styles.voiceResetBtn} onClick={() => { setResult(null); setInputText(''); }}>
+              Try another →
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <textarea
+            className={styles.voiceTextarea}
+            value={inputText}
+            onChange={e => setInputText(e.target.value)}
+            placeholder="Paste any copy — caption, email, website line — and see it rewritten in your brand voice..."
+            disabled={loading}
+          />
+          <button
+            className={styles.voiceCheckBtn}
+            onClick={checkVoice}
+            disabled={!inputText.trim() || loading || usage.count >= usage.limit}
+          >
+            {loading ? <><span className={styles.spinner} /> Checking…</> : 'Check my voice →'}
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Trend Fit Card ────────────────────────────────────────────
+function TrendFitCard({ profile, initialTrends, trendsGeneratedAt }) {
+  const [trends, setTrends] = useState(initialTrends || []);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [expandedIdx, setExpandedIdx] = useState(null);
+  const [generatedAt, setGeneratedAt] = useState(trendsGeneratedAt);
+
+  async function refreshTrends() {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/tools/trend-fit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brandName: profile.brand_name }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      setTrends(data.trends || []);
+      setGeneratedAt(new Date().toISOString());
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const daysSince = generatedAt
+    ? Math.floor((Date.now() - new Date(generatedAt).getTime()) / 86400000)
+    : null;
+
+  const fitClass = { use: styles.trendFitUse, avoid: styles.trendFitAvoid, test: styles.trendFitTest };
+  const fitLabel = { use: 'Use it', avoid: 'Avoid', test: 'Test it' };
+
+  return (
+    <div className={styles.toolCard}>
+      <div className={styles.toolCardHeader}>
+        <div className={styles.toolCardHeaderLeft}>
+          <TrendingUp size={16} style={{ color: 'var(--bs-teal)', flexShrink: 0 }} />
+          <span className={styles.toolCardLabel}>Trend Fit</span>
+        </div>
+        <span className={styles.toolPillTeal}>This week</span>
+      </div>
+
+      {error && (
+        <div className={styles.toolError}>
+          Could not load — try again
+          <button className={styles.toolErrorRetry} onClick={refreshTrends}>Retry</button>
+        </div>
+      )}
+
+      <div className={styles.trendList}>
+        {trends.length > 0 ? trends.slice(0, 3).map((trend, i) => (
+          <div key={i} className={styles.trendRow} onClick={() => setExpandedIdx(expandedIdx === i ? null : i)}>
+            <div className={styles.trendRowMain}>
+              <span className={styles.trendName}>{trend.name}</span>
+              <span className={`${styles.trendFitBadge} ${fitClass[trend.fit] || styles.trendFitTest}`}>
+                {fitLabel[trend.fit] || 'Test it'}
+              </span>
+            </div>
+            {expandedIdx === i && trend.reason && (
+              <p className={styles.trendReason}>{trend.reason}</p>
+            )}
+          </div>
+        )) : (
+          <div className={styles.trendEmpty}>
+            {loading ? 'Checking trends…' : 'Tap refresh to see current trends'}
+          </div>
+        )}
+      </div>
+
+      <div className={styles.trendFooter}>
+        <button className={styles.toolBtnGhost} onClick={refreshTrends} disabled={loading}>
+          {loading ? <><span className={styles.spinner} /> Checking…</> : 'Refresh trends →'}
+        </button>
+        {daysSince !== null && (
+          <span className={styles.trendLastUpdated}>
+            {daysSince === 0 ? 'Updated today' : `Updated ${daysSince}d ago`}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main dashboard ────────────────────────────────────────────
 export default function Dashboard() {
   const router = useRouter();
   const {
     profile, isLoading, error,
+    contentIdea, trends, voiceCheckUsage,
     todayTask, currentWeek, streak,
     latestBrief, isBriefNew,
     scoreHistory, latestScore, latestDimensions, scoreDelta,
@@ -592,7 +879,27 @@ export default function Dashboard() {
 
         </div>
 
-        {/* ── 4. Score history ── */}
+        {/* ── 4. Brand Tools ── */}
+        <div style={{ marginBottom: 4 }}>
+          <p className={styles.brandToolsHeading}>Brand Tools</p>
+          <p className={styles.brandToolsSub}>Daily tools personalised to your brand</p>
+        </div>
+        <div className={styles.toolsGrid}>
+          <ContentIdeaCard profile={profile} initialIdea={contentIdea} />
+          <VoiceCheckCard
+            profile={profile}
+            constitutionAnswered={constitutionProgress.answered}
+            initialUsage={voiceCheckUsage}
+            router={router}
+          />
+          <TrendFitCard
+            profile={profile}
+            initialTrends={trends}
+            trendsGeneratedAt={profile?.trends_generated_at}
+          />
+        </div>
+
+        {/* ── 5. Score history ── */}
         <div className={styles.card} style={{ marginBottom: 20 }}>
           <div className={styles.cardHeaderRow}>
             <span className={styles.briefTitle}>Score history</span>
@@ -639,7 +946,7 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* ── 5. Quick actions ── */}
+        {/* ── 6. Quick actions ── */}
         <div className={styles.quickActionsGrid}>
           {[
             { icon: FileText,  label: 'Stakeholder report', sub: 'Download PDF',        href: '/reports'      },

@@ -61,6 +61,26 @@ export function useDashboard() {
     loadProfile();
   }, []);
 
+  // ── Tool data derived from profile ───────────────────────────
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  const contentIdea = (() => {
+    const idea = profile?.latest_content_idea;
+    if (!idea) return null;
+    return idea.generated_at?.startsWith(todayStr) ? idea : null;
+  })();
+
+  const trends = (() => {
+    if (!profile?.latest_trends || !profile?.trends_generated_at) return null;
+    const daysSince = (Date.now() - new Date(profile.trends_generated_at).getTime()) / 86400000;
+    return daysSince < 7 ? profile.latest_trends : null;
+  })();
+
+  const voiceCheckUsage = {
+    count: profile?.voice_check_date === todayStr ? (profile?.voice_check_count || 0) : 0,
+    limit: 10,
+  };
+
   // ── Derived values ───────────────────────────────────────────
   const todayTask   = profile?.tasks?.find(t => t.status === 'todo') || null;
   const currentWeek = profile?.current_week || 1;
@@ -214,6 +234,9 @@ export function useDashboard() {
     setProfile,
     isLoading,
     error,
+    contentIdea,
+    trends,
+    voiceCheckUsage,
     todayTask,
     currentWeek,
     streak,
