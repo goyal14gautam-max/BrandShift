@@ -18,7 +18,8 @@ import FadeIn from '@/components/FadeIn';
 import EffortIcon from '@/components/EffortIcon';
 import ConstitutionPlant from '@/components/ConstitutionPlant';
 import RoadmapPath from '@/components/RoadmapPath';
-import AnimatedBackground from '@/components/AnimatedBackground';
+import dynamic from 'next/dynamic';
+const AnimatedBackground = dynamic(() => import('@/components/AnimatedBackground'), { ssr: false });
 
 const ANIMATIONS = {
   focus:   'https://assets5.lottiefiles.com/packages/lf20_kkflmtur.json',
