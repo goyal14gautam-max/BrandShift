@@ -53,6 +53,8 @@ export async function POST(request) {
   const profile = await getBrandProfile(brandName);
   if (!profile) return NextResponse.json({ error: 'Brand profile not found' }, { status: 404 });
 
+  // Prefer fresh coreAnswers over potentially stale profile fields
+  const core = coreAnswers || {};
   const voice = profile.brand_voice_examples?.[0] || {};
 
   // Build prompt — mark fields as "Building..." if not yet answered
@@ -61,11 +63,11 @@ export async function POST(request) {
 
   const userPrompt = `Create a Brand Constitution for ${brandName} based on these answers. For any section where the data is marked "[Not yet answered]", return the string "Building..." for that section only — do not invent answers.
 
-${field('Mission', val(profile.brand_mission))}
-${field('Personality words', val(profile.brand_personality_words))}
-${field('Off-brand words', val(profile.brand_off_brand_words))}
-${field('Best customer', val(profile.brand_best_customer))}
-${field('5 year association', val(profile.brand_5_year_association))}
+${field('Mission', val(core.brand_mission ?? profile.brand_mission))}
+${field('Personality words', val(core.brand_personality_words ?? profile.brand_personality_words))}
+${field('Off-brand words', val(core.brand_off_brand_words ?? profile.brand_off_brand_words))}
+${field('Best customer', val(core.brand_best_customer ?? profile.brand_best_customer))}
+${field('5 year association', val(core.brand_5_year_association ?? profile.brand_5_year_association))}
 ${field('Origin story', val(profile.brand_origin_story))}
 ${field('Refuses to', val(profile.brand_refuses_to))}
 ${field('Brand as a person', val(profile.brand_person_description))}
