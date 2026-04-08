@@ -89,24 +89,15 @@ export default function BrandRadarChart({
   brandName,
   competitorName,
   competitorData,
-  dataConfidence,
 }) {
   const data = buildRadarData(brandData, competitorData);
   const hasCompetitor = competitorName && competitorData;
-
-  const confidenceLower = (dataConfidence || '').toLowerCase();
-  let confidenceNote = null;
-  if (confidenceLower.includes('medium')) {
-    confidenceNote = 'Chart accuracy improves with more data sources. Connect Instagram for a more complete picture.';
-  } else if (confidenceLower.includes('low')) {
-    confidenceNote = 'Chart accuracy improves with more data sources. Re-run audit with website URL and Instagram handle for accurate scores.';
-  }
 
   return (
     <div>
       <div className="radarWrap">
         <ResponsiveContainer width="100%" height="100%">
-          <RadarChart cx="50%" cy="50%" outerRadius="65%" data={data}>
+          <RadarChart cx="50%" cy="50%" outerRadius="72%" data={data}>
             <PolarGrid gridType="polygon" stroke="rgba(255,255,255,0.06)" />
             <PolarAngleAxis
               dataKey="dimension"
@@ -161,7 +152,7 @@ export default function BrandRadarChart({
       <style jsx>{`
         .radarWrap {
           width: 100%;
-          height: 320px;
+          height: 380px;
         }
         @media (max-width: 768px) {
           .radarWrap {

@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Eye, Globe, Users, TrendingUp, MessageSquare, Target,
   CheckCircle, AlertCircle, Download, Share2, Check,
-  ChevronDown, ChevronUp, FileText, ArrowUp, AtSign, Info,
+  ChevronDown, ChevronUp, ChevronLeft, ChevronRight, FileText, ArrowUp, AtSign, Info,
 } from 'lucide-react';
 import { useInView } from '@/hooks/useInView';
 import { useAuth } from '@/hooks/useAuth';
@@ -86,10 +86,24 @@ function truncate(text, maxLen = 180) {
   return text.slice(0, maxLen).trimEnd() + '…';
 }
 
-function getTwoSentences(text) {
+function getThreeSentences(text) {
   if (!text) return '';
   const sentences = text.match(/[^.!?]+[.!?]+/g) || [];
-  return sentences.slice(0, 2).join(' ').trim() || text;
+  return sentences.slice(0, 3).join(' ').trim() || text;
+}
+
+function getBrandDisplayName(nameOrUrl) {
+  if (!nameOrUrl) return '';
+  if (nameOrUrl.includes('http') || nameOrUrl.includes('www.')) {
+    try {
+      const url = nameOrUrl.startsWith('http') ? nameOrUrl : 'https://' + nameOrUrl;
+      const hostname = new URL(url).hostname.replace('www.', '').split('.')[0];
+      return hostname.charAt(0).toUpperCase() + hostname.slice(1);
+    } catch {
+      return nameOrUrl.slice(0, 20);
+    }
+  }
+  return nameOrUrl.length > 20 ? nameOrUrl.slice(0, 20) + '…' : nameOrUrl;
 }
 
 // ── Sub-components ─────────────────────────────────────────────
@@ -174,6 +188,11 @@ function ResultsInner() {
   const [isGeneratingRoadmap, setIsGeneratingRoadmap] = useState(false);
   const [roadmapStep, setRoadmapStep] = useState(0);
   const [autoGenerating, setAutoGenerating] = useState(false);
+  const [activeCard, setActiveCard] = useState(0);
+  const carouselRef = useRef(null);
+  const isDragging = useRef(false);
+  const startX = useRef(0);
+  const scrollLeftRef = useRef(0);
 
   useEffect(() => {
     const raw = localStorage.getItem('brandshift_score');
@@ -383,6 +402,7 @@ function ResultsInner() {
         )}
 
         {/* ══ 1 — Score Hero ══ */}
+        <div className={styles.heroSection}>
         <section className={styles.heroGrid}>
 
           {/* Left: ring + verdict */}
@@ -467,6 +487,7 @@ function ResultsInner() {
             </div>
           </div>
         </section>
+        </div>
 
         {/* ══ 2 — Score Simulation + Brand Maturity Path ══ */}
         <section className={styles.heroTransition}>
@@ -553,7 +574,6 @@ function ResultsInner() {
                 brandName={intakeData.brandName || 'Your Brand'}
                 competitorName={scoreData.competitor_scores?.name || null}
                 competitorData={scoreData.competitor_scores?.dimensions || null}
-                dataConfidence={scoreData.data_confidence}
               />
             </div>
 
@@ -615,9 +635,7 @@ function ResultsInner() {
                   <div className={styles.legendRow}>
                     <svg width="20" height="2"><line x1="0" y1="1" x2="20" y2="1" stroke="#E8622A" strokeWidth="1.5" strokeDasharray="4 4"/></svg>
                     <span className={styles.legendText}>
-                      {scoreData.competitor_scores.name.length > 20
-                        ? scoreData.competitor_scores.name.slice(0, 20) + '…'
-                        : scoreData.competitor_scores.name}
+                      {getBrandDisplayName(scoreData.competitor_scores.name)}
                     </span>
                   </div>
                   <p className={styles.legendNote}>Chart accuracy improves with more data sources.</p>
@@ -627,11 +645,62 @@ function ResultsInner() {
             </div>
           </div>
 
-          {/* Part B: Dimension cards grid */}
+          {/* Part B: Dimension carousel */}
           <div className={styles.dimPartB}>
-            <h2 className={styles.sectionTitleSm}>Dimension breakdown</h2>
-            <p className={styles.sectionSubSm}>What's driving your score</p>
-            <div className={styles.dimGrid}>
+            <div className={styles.carouselHeader}>
+              <div>
+                <h2 className={styles.sectionTitleSm}>Dimension breakdown</h2>
+                <p className={styles.sectionSubSm}>Swipe to explore each dimension →</p>
+              </div>
+              <div className={styles.carouselArrows}>
+                <button
+                  className={styles.arrowBtn}
+                  onClick={() => carouselRef.current?.scrollBy({ left: -436, behavior: 'smooth' })}
+                  disabled={activeCard === 0}
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <button
+                  className={styles.arrowBtn}
+                  onClick={() => carouselRef.current?.scrollBy({ left: 436, behavior: 'smooth' })}
+                  disabled={activeCard === DIM_CONFIG.length - 1}
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+
+            <div
+              className={styles.carousel}
+              ref={carouselRef}
+              onScroll={() => {
+                const el = carouselRef.current;
+                if (!el) return;
+                setActiveCard(Math.round(el.scrollLeft / 436));
+              }}
+              onMouseDown={e => {
+                isDragging.current = true;
+                startX.current = e.pageX - carouselRef.current.offsetLeft;
+                scrollLeftRef.current = carouselRef.current.scrollLeft;
+                carouselRef.current.style.cursor = 'grabbing';
+              }}
+              onMouseLeave={() => {
+                isDragging.current = false;
+                if (carouselRef.current) carouselRef.current.style.cursor = 'grab';
+              }}
+              onMouseUp={() => {
+                isDragging.current = false;
+                if (carouselRef.current) carouselRef.current.style.cursor = 'grab';
+              }}
+              onMouseMove={e => {
+                if (!isDragging.current) return;
+                e.preventDefault();
+                const x = e.pageX - carouselRef.current.offsetLeft;
+                const walk = (x - startX.current) * 1.5;
+                carouselRef.current.scrollLeft = scrollLeftRef.current - walk;
+              }}
+            >
+              <div className={styles.carouselTrack}>
               {DIM_CONFIG.map((dim, i) => {
                 const s = dims[dim.key]?.score ?? overall;
                 const col = scoreColor(s);
@@ -643,54 +712,64 @@ function ResultsInner() {
                 const isExpanded   = expandedDim === dim.key;
 
                 return (
-                  <FadeUp key={dim.key} delay={i * 60}>
-                    <div
-                      className={styles.dimCardSmall}
-                      onClick={() => setExpandedDim(prev => prev === dim.key ? null : dim.key)}
-                    >
-                      <div className={styles.dimSmallHeader}>
-                        <div className={styles.dimSmallLeft}>
-                          <Icon size={14} style={{ color: 'var(--bs-violet)', flexShrink: 0 }} />
-                          <span className={styles.dimSmallName}>{dim.label}</span>
-                          <Tooltip content={FRAMEWORK_TOOLTIPS[dim.key]} />
-                        </div>
-                        <div className={styles.dimSmallRight}>
-                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 20, color: col }}>{s}</span>
-                          {isExpanded
-                            ? <ChevronUp size={13} style={{ color: 'var(--bs-text-tertiary)' }} />
-                            : <ChevronDown size={13} style={{ color: 'var(--bs-text-tertiary)' }} />}
-                        </div>
+                  <div
+                    key={dim.key}
+                    className={styles.carouselCard}
+                    onClick={() => setExpandedDim(prev => prev === dim.key ? null : dim.key)}
+                  >
+                    <div className={styles.dimSmallHeader}>
+                      <div className={styles.dimSmallLeft}>
+                        <Icon size={14} style={{ color: 'var(--bs-violet)', flexShrink: 0 }} />
+                        <span className={styles.dimSmallName}>{dim.label}</span>
+                        <Tooltip content={FRAMEWORK_TOOLTIPS[dim.key]} />
                       </div>
-                      <AnimatedBar score={s} color={col} delay={i * 80} />
-
-                      {isExpanded ? (
-                        justification && <p className={styles.dimExpandJust}>{justification}</p>
-                      ) : (
-                        justification && <p className={styles.dimSmallJust}>{getTwoSentences(justification)}</p>
-                      )}
-
-                      {evidenceQ && (
-                        <p className={styles.dimSmallEvidence}>{evidenceQ}</p>
-                      )}
-
-                      {improvement && (
-                        <span className={styles.improvePill}>
-                          <ArrowUp size={10} style={{ marginRight: 4 }} />
-                          {truncate(improvement, 90)}
-                        </span>
-                      )}
-
-                      {isExpanded && voiceWords.length > 0 && (
-                        <div className={styles.voicePills}>
-                          {voiceWords.map((w, wi) => (
-                            <span key={wi} className={styles.voicePill}>{w}</span>
-                          ))}
-                        </div>
-                      )}
+                      <div className={styles.dimSmallRight}>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: col }}>{s}</span>
+                        {isExpanded
+                          ? <ChevronUp size={13} style={{ color: 'var(--bs-text-tertiary)' }} />
+                          : <ChevronDown size={13} style={{ color: 'var(--bs-text-tertiary)' }} />}
+                      </div>
                     </div>
-                  </FadeUp>
+                    <AnimatedBar score={s} color={col} delay={i * 80} />
+
+                    {isExpanded ? (
+                      justification && <p className={styles.dimExpandJust}>{justification}</p>
+                    ) : (
+                      justification && <p className={styles.dimSmallJust}>{getThreeSentences(justification)}</p>
+                    )}
+
+                    {evidenceQ && (
+                      <p className={styles.dimCarouselEvidence}>{evidenceQ}</p>
+                    )}
+
+                    {improvement && (
+                      <span className={styles.improvePill}>
+                        <ArrowUp size={10} style={{ marginRight: 4 }} />
+                        {truncate(improvement, 90)}
+                      </span>
+                    )}
+
+                    {isExpanded && voiceWords.length > 0 && (
+                      <div className={styles.voicePills}>
+                        {voiceWords.map((w, wi) => (
+                          <span key={wi} className={styles.voicePill}>{w}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 );
               })}
+              </div>{/* end carouselTrack */}
+            </div>{/* end carousel */}
+
+            <div className={styles.carouselDots}>
+              {DIM_CONFIG.map((_, i) => (
+                <span
+                  key={i}
+                  className={`${styles.carouselDot} ${i === activeCard ? styles.carouselDotActive : ''}`}
+                  onClick={() => carouselRef.current?.scrollTo({ left: i * 436, behavior: 'smooth' })}
+                />
+              ))}
             </div>
           </div>
 
