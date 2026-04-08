@@ -6,17 +6,18 @@ import { useAuth } from '@/hooks/useAuth';
 import { useDashboard } from '@/hooks/useDashboard';
 import {
   LayoutDashboard, Map, FileText,
-  BookOpen, Settings, LogOut,
+  BookOpen, Settings, LogOut, Rocket,
 } from 'lucide-react';
 import Logo from '@/components/Logo';
 import styles from './Sidebar.module.css';
 
 const NAV_ITEMS = [
-  { icon: LayoutDashboard, label: 'Dashboard',   href: '/dashboard'    },
-  { icon: Map,             label: 'Roadmap',      href: '/roadmap'      },
-  { icon: FileText,        label: 'Reports',      href: '/reports'      },
+  { icon: LayoutDashboard, label: 'Dashboard',   href: '/dashboard'     },
+  { icon: Map,             label: 'Roadmap',      href: '/roadmap'       },
+  { icon: Rocket,          label: 'Pre-Flight',   href: '/preflight'     },
+  { icon: FileText,        label: 'Reports',      href: '/reports'       },
   { icon: BookOpen,        label: 'Constitution', href: '/constitution'  },
-  { icon: Settings,        label: 'Settings',     href: '/settings'     },
+  { icon: Settings,        label: 'Settings',     href: '/settings'      },
 ];
 
 function scoreColor(s) {
