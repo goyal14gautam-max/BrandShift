@@ -123,6 +123,7 @@ export default function Constitution() {
   const [brandName, setBrandName]       = useState('');
   const [saving, setSaving]             = useState(false);
   const [saveMsg, setSaveMsg]           = useState('');
+  const [genError, setGenError]         = useState('');
   const [constitution, setConstitution] = useState(null);
   const [isMobile, setIsMobile]         = useState(false);
 
@@ -233,7 +234,7 @@ export default function Constitution() {
       localStorage.removeItem('brandshift_constitution_progress');
       setScreen('result');
     } catch (e) {
-      alert('Failed to generate constitution: ' + e.message);
+      setGenError('Generation failed: ' + e.message + '. Please try again.');
       setScreen('section');
     }
   }
@@ -487,6 +488,12 @@ export default function Constitution() {
               ))
           }
         </div>
+
+        {genError && (
+          <div style={{ background: 'rgba(232,98,42,0.12)', border: '1px solid #E8622A', borderRadius: 8, padding: '12px 16px', marginBottom: 16, color: '#E8622A', fontSize: 14 }}>
+            {genError}
+          </div>
+        )}
 
         <div className={styles.navRow}>
           <button className={styles.backBtn} onClick={handleBack}>← Back</button>

@@ -37,11 +37,17 @@ function val(v) {
 
 export async function POST(request) {
   const { brandName, coreAnswers } = await request.json();
+  console.log('[constitution/generate] brandName:', brandName, '| has coreAnswers:', !!coreAnswers);
   if (!brandName) return NextResponse.json({ error: 'brandName required' }, { status: 400 });
 
   // Save core answers first if passed directly from form
   if (coreAnswers) {
-    try { await updateBrandProfile(brandName, coreAnswers); } catch {}
+    try {
+      await updateBrandProfile(brandName, coreAnswers);
+      console.log('[constitution/generate] core answers saved to Supabase');
+    } catch (err) {
+      console.error('[constitution/generate] failed to save core answers:', err.message);
+    }
   }
 
   const profile = await getBrandProfile(brandName);
@@ -93,12 +99,18 @@ Return ONLY this JSON, no other text:
   "where_we_are_going": "2-3 sentences on vision, or 'Building...'"
 }`;
 
-  const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-0',
-    max_tokens: 2000,
-    system: `You are a brand strategist synthesising a Brand Constitution from partial brand answers. Write with conviction for sections that have data. Return exactly "Building..." (the string) for any section lacking sufficient data — never invent or guess answers.`,
-    messages: [{ role: 'user', content: userPrompt }],
-  });
+  let response;
+  try {
+    response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 2000,
+      system: `You are a brand strategist synthesising a Brand Constitution from partial brand answers. Write with conviction for sections that have data. Return exactly "Building..." (the string) for any section lacking sufficient data — never invent or guess answers.`,
+      messages: [{ role: 'user', content: userPrompt }],
+    });
+  } catch (err) {
+    console.error('[constitution/generate] Anthropic API error:', err.message);
+    return NextResponse.json({ error: 'AI generation failed: ' + err.message }, { status: 500 });
+  }
 
   const text = response.content.find(b => b.type === 'text')?.text || '';
   const parsed = extractJSON(text);
@@ -110,8 +122,9 @@ Return ONLY this JSON, no other text:
       constitution_completed: true,
       constitution_queue:     DAILY_QUEUE,
     });
+    console.log('[constitution/generate] constitution saved to Supabase');
   } catch (err) {
-    console.error('Constitution Supabase save error:', err.message);
+    console.error('[constitution/generate] Supabase save error:', err.message);
   }
 
   return NextResponse.json(parsed);
