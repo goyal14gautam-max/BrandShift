@@ -103,7 +103,12 @@ export function useDashboard() {
       .map(([date, entry]) => ({ ...entry, date }));
   })();
 
-  const latestScore  = profile?.latest_overall_score || null;
+  const latestScore = profile?.latest_overall_score || (() => {
+    try {
+      const raw = typeof window !== 'undefined' ? localStorage.getItem('brandshift_score') : null;
+      return raw ? JSON.parse(raw).overall_score : null;
+    } catch { return null; }
+  })();
 
   // Fix 1 — pull individual dimension scores from latest score_history entry
   const latestDimensions = (() => {

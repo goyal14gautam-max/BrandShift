@@ -675,6 +675,7 @@ export default function Dashboard() {
 
   // Today task index in original array
   const todayTaskIdx = profile?.tasks?.findIndex(t => t.status === 'todo') ?? -1;
+  const hasTasks = (profile?.tasks || []).length > 0;
 
   // Brand color (from DB or default violet)
   const brandColor = profile?.brand_color || '#7C5CBF';
@@ -743,10 +744,16 @@ export default function Dashboard() {
                 </button>
               </div>
             </div>
-          ) : (
+          ) : hasTasks ? (
             <div className={styles.focusEmpty}>
               <CheckCircle size={20} style={{ color: 'var(--bs-teal)' }} />
               <span>All tasks for this week are complete</span>
+            </div>
+          ) : (
+            <div className={styles.focusEmpty}>
+              <span style={{ color: 'var(--bs-text-tertiary)', fontSize: 14 }}>
+                Generate a roadmap to unlock your weekly tasks
+              </span>
             </div>
           )}
           {/* Effort illustration */}
