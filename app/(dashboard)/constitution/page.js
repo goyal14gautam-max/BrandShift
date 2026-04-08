@@ -133,10 +133,8 @@ export default function Constitution() {
     const resolvedBrand = brand.brandName || localStorage.getItem('brandshift_active_brand') || '';
     if (resolvedBrand) setBrandName(resolvedBrand);
 
-    if (localStorage.getItem('brandshift_constitution_done') === 'true') {
-      router.push('/dashboard');
-      return;
-    }
+    // Clear any stale completion flag so users can always re-enter
+    localStorage.removeItem('brandshift_constitution_done');
 
     const saved = localStorage.getItem('brandshift_constitution_progress');
     if (saved) {
