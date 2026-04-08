@@ -133,7 +133,7 @@ export default function Constitution() {
     const resolvedBrand = brand.brandName || localStorage.getItem('brandshift_active_brand') || '';
     if (resolvedBrand) setBrandName(resolvedBrand);
 
-    if (localStorage.getItem('brandshift_constitution_done')) {
+    if (localStorage.getItem('brandshift_constitution_done') === 'true') {
       router.push('/dashboard');
       return;
     }
