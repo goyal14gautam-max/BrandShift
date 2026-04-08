@@ -130,7 +130,8 @@ export default function Constitution() {
 
   useEffect(() => {
     const brand = JSON.parse(localStorage.getItem('brandshift_brand') || '{}');
-    if (brand.brandName) setBrandName(brand.brandName);
+    const resolvedBrand = brand.brandName || localStorage.getItem('brandshift_active_brand') || '';
+    if (resolvedBrand) setBrandName(resolvedBrand);
 
     if (localStorage.getItem('brandshift_constitution_done')) {
       router.push('/dashboard');
@@ -194,27 +195,20 @@ export default function Constitution() {
   async function handleNext() {
     const q = CORE_QUESTIONS[questionIdx];
 
-    // On desktop validate all on last question, otherwise just current
-    if (!isMobile && questionIdx < totalQ - 1) {
+    // Mobile: one question at a time
+    if (isMobile) {
       const err = validateQuestion(q, answers);
       if (err) { setErrors({ [q.field]: err }); return; }
       setErrors({});
-      setQIdx(questionIdx + 1);
-      return;
+
+      if (questionIdx < totalQ - 1) {
+        setQIdx(questionIdx + 1);
+        return;
+      }
+      // Mobile last question: fall through to submit
     }
 
-    // Validate current question
-    const err = validateQuestion(q, answers);
-    if (err) { setErrors({ [q.field]: err }); return; }
-    setErrors({});
-
-    // If not last question, advance
-    if (questionIdx < totalQ - 1) {
-      setQIdx(questionIdx + 1);
-      return;
-    }
-
-    // Last question — validate all and submit
+    // Desktop (all questions shown at once) or mobile on last question: validate all and submit
     const allErrors = {};
     for (const cq of CORE_QUESTIONS) {
       const e = validateQuestion(cq, answers);
