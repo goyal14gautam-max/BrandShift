@@ -586,10 +586,13 @@ export default function Dashboard() {
     }
   }, [isLoading, profile]);
 
-  // Redirect to results if no roadmap yet
+  // Redirect to results if no roadmap yet — but only if localStorage also has no roadmap
   useEffect(() => {
     if (!isLoading && profile && !profile.current_roadmap) {
-      router.replace('/results?message=complete_roadmap');
+      const localRoadmap = localStorage.getItem('brandshift_roadmap');
+      if (!localRoadmap) {
+        router.replace('/results?message=complete_roadmap');
+      }
     }
   }, [profile, isLoading, router]);
 
