@@ -541,12 +541,13 @@ function ResultsInner() {
           <h2 className={styles.sectionTitle}>Where the gaps are</h2>
           <p className={styles.sectionSub}>Your brand scored across 5 dimensions — here's what's driving the number</p>
 
-          <div className={styles.radarSection}>
+          {/* Part A: Radar chart row */}
+          <div className={styles.radarPartA}>
 
-            {/* Left: Radar chart + weight bars */}
-            <div className={styles.radarLeft}>
+            {/* LEFT: radar chart */}
+            <div>
               <h2 className={styles.sectionTitleSm}>Brand shape</h2>
-              <p className={styles.sectionSub}>Your strengths and gaps at a glance</p>
+              <p className={styles.sectionSubSm}>Your strengths and gaps at a glance</p>
               <BrandRadarChart
                 brandData={scoreData.dimensions}
                 brandName={intakeData.brandName || 'Your Brand'}
@@ -554,87 +555,145 @@ function ResultsInner() {
                 competitorData={scoreData.competitor_scores?.dimensions || null}
                 dataConfidence={scoreData.data_confidence}
               />
-              <div className={styles.weightSection}>
-                <p className={styles.weightTitle}>How we weighted this analysis</p>
-                {channels.map(ch => (
-                  <div key={ch.label} className={styles.weightRow}>
-                    <span className={styles.weightLabel}>{ch.label}</span>
-                    <div className={styles.weightBarWrap}>
-                      <div className={styles.weightBarFill} style={{ width: `${ch.value}%` }} />
-                    </div>
-                    <span className={styles.weightValue}>{ch.value}%</span>
-                  </div>
-                ))}
-              </div>
             </div>
 
-            {/* Right: Condensed dimension cards */}
-            <div className={styles.radarRight}>
-              <h2 className={styles.sectionTitleSm}>Dimension breakdown</h2>
-              <p className={styles.sectionSub}>What's driving your score</p>
-              <div className={styles.dimStack}>
-                {DIM_CONFIG.map((dim, i) => {
-                  const s = dims[dim.key]?.score ?? overall;
-                  const col = scoreColor(s);
-                  const Icon = dim.icon;
-                  const justification = dims[dim.key]?.justification || '';
-                  const evidenceQ    = dims[dim.key]?.evidence_quote || '';
-                  const improvement  = dims[dim.key]?.improvement_action || '';
-                  const voiceWords   = dim.key === 'tone_voice' ? (dims.tone_voice?.voice_in_3_words || []) : [];
-                  const isExpanded   = expandedDim === dim.key;
+            {/* RIGHT: weights + confidence + sources + legend */}
+            <div className={styles.radarRightPanel}>
 
-                  return (
-                    <FadeUp key={dim.key} delay={i * 60}>
-                      <div
-                        className={styles.dimCardSmall}
-                        onClick={() => setExpandedDim(prev => prev === dim.key ? null : dim.key)}
-                      >
-                        <div className={styles.dimSmallHeader}>
-                          <div className={styles.dimSmallLeft}>
-                            <Icon size={14} style={{ color: 'var(--bs-violet)', flexShrink: 0 }} />
-                            <span className={styles.dimSmallName}>{dim.label}</span>
-                            <Tooltip content={FRAMEWORK_TOOLTIPS[dim.key]} />
-                          </div>
-                          <div className={styles.dimSmallRight}>
-                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 20, color: col }}>{s}</span>
-                            {isExpanded
-                              ? <ChevronUp size={13} style={{ color: 'var(--bs-text-tertiary)' }} />
-                              : <ChevronDown size={13} style={{ color: 'var(--bs-text-tertiary)' }} />}
-                          </div>
-                        </div>
-                        <AnimatedBar score={s} color={col} delay={i * 80} />
+              {/* Weight bars */}
+              <p className={styles.panelHeading}>How we weighted this analysis</p>
+              {channels.map(ch => (
+                <div key={ch.label} className={styles.weightRow}>
+                  <span className={styles.weightLabel}>{ch.label}</span>
+                  <div className={styles.weightBarWrap}>
+                    <div className={styles.weightBarFill} style={{ width: `${ch.value}%` }} />
+                  </div>
+                  <span className={styles.weightValue}>{ch.value}%</span>
+                </div>
+              ))}
 
-                        {isExpanded ? (
-                          justification && <p className={styles.dimExpandJust}>{justification}</p>
-                        ) : (
-                          justification && <p className={styles.dimSmallJust}>{getTwoSentences(justification)}</p>
-                        )}
+              {/* Data confidence */}
+              <div className={styles.confidenceBlock}>
+                <p className={styles.panelHeading}>Data confidence</p>
+                <div className={styles.confidenceDots}>
+                  {(() => {
+                    const lvl = (scoreData.data_confidence || '').toLowerCase();
+                    const filled = lvl.includes('high') ? 3 : lvl.includes('medium') ? 2 : 1;
+                    const col = lvl.includes('high') ? 'var(--bs-teal)' : lvl.includes('medium') ? 'var(--bs-amber)' : 'var(--bs-orange)';
+                    return [0, 1, 2].map(i => (
+                      <span key={i} className={styles.confidenceDot}
+                        style={{ background: i < filled ? col : 'rgba(255,255,255,0.1)' }} />
+                    ));
+                  })()}
+                </div>
+                <p className={styles.confidenceText}>
+                  {scoreData.data_confidence ? scoreData.data_confidence.charAt(0).toUpperCase() + scoreData.data_confidence.slice(1) : '—'} confidence
+                </p>
 
-                        {evidenceQ && (
-                          <p className={styles.dimSmallEvidence}>{evidenceQ}</p>
-                        )}
-
-                        {improvement && (
-                          <span className={styles.improvePill}>
-                            <ArrowUp size={10} style={{ marginRight: 4 }} />
-                            {truncate(improvement, 90)}
-                          </span>
-                        )}
-
-                        {isExpanded && voiceWords.length > 0 && (
-                          <div className={styles.voicePills}>
-                            {voiceWords.map((w, wi) => (
-                              <span key={wi} className={styles.voicePill}>{w}</span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </FadeUp>
-                  );
-                })}
+                {/* Source pills */}
+                <div className={styles.sourcePills}>
+                  {[
+                    { label: 'Website',     key: 'homepage' },
+                    { label: 'Instagram',   key: 'instagram' },
+                    { label: 'Competitors', key: 'competitors' },
+                    { label: 'Blog',        key: 'blog' },
+                  ].map(s => (
+                    <span key={s.label} className={sourceAvail[s.key] ? styles.pillOn : styles.pillOff}>
+                      {s.label}
+                    </span>
+                  ))}
+                </div>
               </div>
+
+              {/* Competitor legend */}
+              {scoreData.competitor_scores?.name && (
+                <div className={styles.legendBlock}>
+                  <div className={styles.legendRow}>
+                    <svg width="20" height="2"><line x1="0" y1="1" x2="20" y2="1" stroke="#7C5CBF" strokeWidth="2"/></svg>
+                    <span className={styles.legendText}>{intakeData.brandName || 'Your Brand'}</span>
+                  </div>
+                  <div className={styles.legendRow}>
+                    <svg width="20" height="2"><line x1="0" y1="1" x2="20" y2="1" stroke="#E8622A" strokeWidth="1.5" strokeDasharray="4 4"/></svg>
+                    <span className={styles.legendText}>
+                      {scoreData.competitor_scores.name.length > 20
+                        ? scoreData.competitor_scores.name.slice(0, 20) + '…'
+                        : scoreData.competitor_scores.name}
+                    </span>
+                  </div>
+                  <p className={styles.legendNote}>Chart accuracy improves with more data sources.</p>
+                </div>
+              )}
+
             </div>
           </div>
+
+          {/* Part B: Dimension cards grid */}
+          <div className={styles.dimPartB}>
+            <h2 className={styles.sectionTitleSm}>Dimension breakdown</h2>
+            <p className={styles.sectionSubSm}>What's driving your score</p>
+            <div className={styles.dimGrid}>
+              {DIM_CONFIG.map((dim, i) => {
+                const s = dims[dim.key]?.score ?? overall;
+                const col = scoreColor(s);
+                const Icon = dim.icon;
+                const justification = dims[dim.key]?.justification || '';
+                const evidenceQ    = dims[dim.key]?.evidence_quote || '';
+                const improvement  = dims[dim.key]?.improvement_action || '';
+                const voiceWords   = dim.key === 'tone_voice' ? (dims.tone_voice?.voice_in_3_words || []) : [];
+                const isExpanded   = expandedDim === dim.key;
+
+                return (
+                  <FadeUp key={dim.key} delay={i * 60}>
+                    <div
+                      className={styles.dimCardSmall}
+                      onClick={() => setExpandedDim(prev => prev === dim.key ? null : dim.key)}
+                    >
+                      <div className={styles.dimSmallHeader}>
+                        <div className={styles.dimSmallLeft}>
+                          <Icon size={14} style={{ color: 'var(--bs-violet)', flexShrink: 0 }} />
+                          <span className={styles.dimSmallName}>{dim.label}</span>
+                          <Tooltip content={FRAMEWORK_TOOLTIPS[dim.key]} />
+                        </div>
+                        <div className={styles.dimSmallRight}>
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 20, color: col }}>{s}</span>
+                          {isExpanded
+                            ? <ChevronUp size={13} style={{ color: 'var(--bs-text-tertiary)' }} />
+                            : <ChevronDown size={13} style={{ color: 'var(--bs-text-tertiary)' }} />}
+                        </div>
+                      </div>
+                      <AnimatedBar score={s} color={col} delay={i * 80} />
+
+                      {isExpanded ? (
+                        justification && <p className={styles.dimExpandJust}>{justification}</p>
+                      ) : (
+                        justification && <p className={styles.dimSmallJust}>{getTwoSentences(justification)}</p>
+                      )}
+
+                      {evidenceQ && (
+                        <p className={styles.dimSmallEvidence}>{evidenceQ}</p>
+                      )}
+
+                      {improvement && (
+                        <span className={styles.improvePill}>
+                          <ArrowUp size={10} style={{ marginRight: 4 }} />
+                          {truncate(improvement, 90)}
+                        </span>
+                      )}
+
+                      {isExpanded && voiceWords.length > 0 && (
+                        <div className={styles.voicePills}>
+                          {voiceWords.map((w, wi) => (
+                            <span key={wi} className={styles.voicePill}>{w}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </FadeUp>
+                );
+              })}
+            </div>
+          </div>
+
         </section>
 
         {/* ══ 4 — Key Findings ══ */}

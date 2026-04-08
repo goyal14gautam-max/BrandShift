@@ -273,15 +273,128 @@
 }
 
 /* ── 2 — Radar + Dimensions ─────────────────────────────────── */
-.radarSection {
+
+/* Part A: radar left + right panel */
+.radarPartA {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 40px;
+  gap: 48px;
   align-items: start;
+  margin-bottom: 32px;
 }
 
-.radarLeft {}
-.radarRight {}
+.radarRightPanel {
+  display: flex;
+  flex-direction: column;
+  padding-top: 4px;
+}
+
+.panelHeading {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--bs-text-tertiary);
+  margin-bottom: 14px;
+}
+
+.sectionSubSm {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--bs-text-secondary);
+  margin-bottom: 16px;
+}
+
+/* Confidence dots */
+.confidenceBlock {
+  margin-top: 28px;
+}
+
+.confidenceDots {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.confidenceDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.confidenceText {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--bs-text-secondary);
+  margin-bottom: 12px;
+}
+
+/* Source pills */
+.sourcePills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pillOn {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 100px;
+  background: rgba(46, 196, 160, 0.1);
+  color: var(--bs-teal);
+  border: 1px solid rgba(46, 196, 160, 0.2);
+}
+
+.pillOff {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 100px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--bs-text-tertiary);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Competitor legend */
+.legendBlock {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.legendRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.legendText {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--bs-text-secondary);
+}
+
+.legendNote {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--bs-text-tertiary);
+  margin-top: 4px;
+}
+
+/* Part B: dimension cards 2-column grid */
+.dimPartB {
+  margin-top: 8px;
+}
+
+.dimGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
 
 /* Channel weight bars */
 .weightSection {
@@ -995,10 +1108,13 @@
   .badgeRow { justify-content: center; }
   .metricsGrid { grid-template-columns: 1fr 1fr; }
 
-  .radarSection {
+  .radarPartA {
     grid-template-columns: 1fr;
     gap: 32px;
-    padding: 40px 0 0;
+  }
+
+  .dimGrid {
+    grid-template-columns: 1fr;
   }
 
   .findingsGrid  { grid-template-columns: 1fr; }

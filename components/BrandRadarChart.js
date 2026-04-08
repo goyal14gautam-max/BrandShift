@@ -75,7 +75,9 @@ function CustomLegend({ brandName, competitorName }) {
           <svg width="24" height="2">
             <line x1="0" y1="1" x2="24" y2="1" stroke="#E8622A" strokeWidth="1.5" strokeDasharray="4 4" />
           </svg>
-          <span style={{ fontFamily: 'sans-serif', fontSize: 13, color: '#8A87A8' }}>{competitorName}</span>
+          <span style={{ fontFamily: 'sans-serif', fontSize: 13, color: '#8A87A8' }}>
+          {competitorName.length > 20 ? competitorName.slice(0, 20) + '…' : competitorName}
+        </span>
         </div>
       )}
     </div>
@@ -102,21 +104,21 @@ export default function BrandRadarChart({
 
   return (
     <div>
-      {/* Desktop: 420px, Mobile: 300px via CSS */}
       <div className="radarWrap">
         <ResponsiveContainer width="100%" height="100%">
-          <RadarChart cx="50%" cy="50%" outerRadius="75%" data={data}>
+          <RadarChart cx="50%" cy="50%" outerRadius="65%" data={data}>
             <PolarGrid gridType="polygon" stroke="rgba(255,255,255,0.06)" />
             <PolarAngleAxis
-              dataKey="short"
+              dataKey="dimension"
               tick={{ fill: '#8A87A8', fontSize: 12 }}
             />
             <PolarRadiusAxis
               angle={90}
               domain={[0, 100]}
-              tickCount={5}
+              tickCount={4}
               tick={{ fill: '#4A4868', fontSize: 10 }}
               axisLine={false}
+              tickLine={false}
             />
 
             <Radar
@@ -156,26 +158,14 @@ export default function BrandRadarChart({
         </ResponsiveContainer>
       </div>
 
-      {confidenceNote && (
-        <p style={{
-          fontFamily: 'sans-serif',
-          fontSize: 12,
-          color: '#4A4868',
-          textAlign: 'center',
-          marginTop: 16,
-        }}>
-          {confidenceNote}
-        </p>
-      )}
-
       <style jsx>{`
         .radarWrap {
           width: 100%;
-          height: 420px;
+          height: 320px;
         }
         @media (max-width: 768px) {
           .radarWrap {
-            height: 300px;
+            height: 260px;
           }
         }
       `}</style>
