@@ -1,16 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Eye, Globe, Users, TrendingUp, MessageSquare, Target,
   CheckCircle, AlertCircle, Download, Share2, Check,
-  ChevronDown, ChevronUp, FileText, ArrowUp, AtSign,
+  ChevronDown, ChevronUp, FileText, ArrowUp, AtSign, Info,
 } from 'lucide-react';
 import { useInView } from '@/hooks/useInView';
+import { useAuth } from '@/hooks/useAuth';
 import BrandRadarChart from '@/components/BrandRadarChart';
 import Tooltip from '@/components/Tooltip';
 import EvidenceSection from '@/components/EvidenceSection';
+import Logo from '@/components/Logo';
 import styles from './results.module.css';
 import { trackPageView, trackEvent } from '@/lib/analytics';
 
@@ -152,9 +154,15 @@ function Toast({ visible }) {
   return <div className={`${styles.toast} ${visible ? styles.toastVisible : ''}`}>Copied!</div>;
 }
 
-// ── Main page ──────────────────────────────────────────────────
-export default function Results() {
+// ── Main page (inner) ──────────────────────────────────────────
+function ResultsInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { user } = useAuth();
+
+  const shouldGenerate = searchParams.get('generate') === 'true';
+  const message = searchParams.get('message');
+
   const [scoreData, setScoreData]   = useState(null);
   const [intakeData, setIntakeData] = useState({});
   const [scrapedData, setScrapedData] = useState(null);
@@ -163,6 +171,9 @@ export default function Results() {
   const [shareLoading, setShareLoading]   = useState(false);
   const [shareModalUrl, setShareModalUrl] = useState('');
   const [shareCopied, setShareCopied]     = useState(false);
+  const [isGeneratingRoadmap, setIsGeneratingRoadmap] = useState(false);
+  const [roadmapStep, setRoadmapStep] = useState(0);
+  const [autoGenerating, setAutoGenerating] = useState(false);
 
   useEffect(() => {
     const raw = localStorage.getItem('brandshift_score');
@@ -182,32 +193,41 @@ export default function Results() {
     });
   }, [router]);
 
-  if (!scoreData) return null;
+  // Auto-generate trigger when returning from login
+  useEffect(() => {
+    if (shouldGenerate && user && !autoGenerating) {
+      setAutoGenerating(true);
+      localStorage.removeItem('brandshift_pending_roadmap');
+      setIsGeneratingRoadmap(true);
+      setTimeout(() => router.push('/roadmap'), 4000);
+    }
+  }, [shouldGenerate, user, autoGenerating, router]);
 
-  const dims    = scoreData.dimensions || {};
-  const overall = scoreData.overall_score || 0;
-  const sourceAvail = scoreData.sources_available || {};
-  const cw = scoreData.channel_weights || { instagram: 30, website: 30, competitor: 25, blog: 15 };
-  const kellerLevel = scoreData.keller_level || null;
-  const kellerInfo  = kellerLevel ? KELLER_LEVELS[kellerLevel - 1] : null;
-  const evidence    = (scoreData.evidence_quotes || []).slice(0, 6);
-  const urgStyle    = urgencyStyle(scoreData.rebrand_urgency);
-  const sim         = calcSimulation(dims, overall);
+  // Advance roadmap step while generating
+  useEffect(() => {
+    if (!isGeneratingRoadmap) return;
+    const interval = setInterval(() => {
+      setRoadmapStep(prev => Math.min(prev + 1, 3));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isGeneratingRoadmap]);
 
-  const sourcesCount = [sourceAvail.homepage, sourceAvail.instagram, sourceAvail.competitors, sourceAvail.blog]
-    .filter(Boolean).length;
-
-  const brandTypeLabel =
-    scoreData.brand_type === 'social-first'   ? 'Social First' :
-    scoreData.brand_type === 'content-first'  ? 'Content First' : 'Balanced';
-
-  const highestDimScore = Math.max(...DIM_CONFIG.map(d => dims[d.key]?.score || overall));
-  const sortedByScore   = [...DIM_CONFIG].sort((a, b) => (dims[a.key]?.score ?? overall) - (dims[b.key]?.score ?? overall));
-  const lowestDim       = sortedByScore[0];
-  const bottom2Dims     = sortedByScore.slice(0, 2);
-  const gap1Name        = DIM_LABELS[bottom2Dims[0]?.key] || '';
-  const gap2Name        = DIM_LABELS[bottom2Dims[1]?.key] || '';
-  const nextLevelAction = dims[lowestDim?.key]?.improvement_action || '';
+  function handleRoadmapCta(location) {
+    trackEvent('roadmap_cta_clicked', {
+      brand_name: intakeData?.brandName,
+      overall_score: scoreData?.overall_score,
+      location,
+    });
+    if (!user) {
+      localStorage.setItem('brandshift_pending_roadmap', JSON.stringify({
+        brandName: intakeData?.brandName,
+      }));
+      router.push('/login?redirect=/results&action=generate_roadmap');
+      return;
+    }
+    setIsGeneratingRoadmap(true);
+    setTimeout(() => router.push('/roadmap'), 4000);
+  }
 
   function handleShare() {
     navigator.clipboard.writeText(window.location.href).catch(() => {});
@@ -246,6 +266,33 @@ export default function Results() {
     setShareCopied(false);
   }
 
+  if (!scoreData) return null;
+
+  const dims    = scoreData.dimensions || {};
+  const overall = scoreData.overall_score || 0;
+  const sourceAvail = scoreData.sources_available || {};
+  const cw = scoreData.channel_weights || { instagram: 30, website: 30, competitor: 25, blog: 15 };
+  const kellerLevel = scoreData.keller_level || null;
+  const kellerInfo  = kellerLevel ? KELLER_LEVELS[kellerLevel - 1] : null;
+  const evidence    = (scoreData.evidence_quotes || []).slice(0, 6);
+  const urgStyle    = urgencyStyle(scoreData.rebrand_urgency);
+  const sim         = calcSimulation(dims, overall);
+
+  const sourcesCount = [sourceAvail.homepage, sourceAvail.instagram, sourceAvail.competitors, sourceAvail.blog]
+    .filter(Boolean).length;
+
+  const brandTypeLabel =
+    scoreData.brand_type === 'social-first'   ? 'Social First' :
+    scoreData.brand_type === 'content-first'  ? 'Content First' : 'Balanced';
+
+  const highestDimScore = Math.max(...DIM_CONFIG.map(d => dims[d.key]?.score || overall));
+  const sortedByScore   = [...DIM_CONFIG].sort((a, b) => (dims[a.key]?.score ?? overall) - (dims[b.key]?.score ?? overall));
+  const lowestDim       = sortedByScore[0];
+  const bottom2Dims     = sortedByScore.slice(0, 2);
+  const gap1Name        = DIM_LABELS[bottom2Dims[0]?.key] || '';
+  const gap2Name        = DIM_LABELS[bottom2Dims[1]?.key] || '';
+  const nextLevelAction = dims[lowestDim?.key]?.improvement_action || '';
+
   const channels = [
     { label: 'Instagram',   value: cw.instagram   || 0 },
     { label: 'Website',     value: cw.website      || 0 },
@@ -256,10 +303,55 @@ export default function Results() {
   return (
     <div className={styles.page}>
 
+      {/* ── Roadmap generation overlay ── */}
+      {isGeneratingRoadmap && (
+        <div style={{
+          position: 'fixed', inset: 0,
+          background: 'rgba(8,8,14,0.9)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          zIndex: 200,
+        }}>
+          <div style={{ marginBottom: 32 }}>
+            <Logo size="lg" />
+          </div>
+          <div style={{ textAlign: 'center', marginBottom: 32 }}>
+            <p style={{ fontFamily: 'var(--font-headline)', fontSize: 24, color: 'var(--bs-text-primary)', marginBottom: 8 }}>
+              Building your roadmap...
+            </p>
+            <p style={{ fontFamily: 'var(--font-ui)', fontSize: 14, color: 'var(--bs-text-secondary)' }}>
+              This takes about 20–30 seconds
+            </p>
+          </div>
+          {['Analysing your brand gaps', 'Prioritising quick wins', 'Building your 8-week plan', 'Creating your vision roadmap'].map((step, i) => (
+            <div key={i} style={{
+              display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10,
+              opacity: roadmapStep >= i ? 1 : 0.3, transition: 'opacity 0.5s ease',
+            }}>
+              {roadmapStep > i ? (
+                <CheckCircle size={14} color="#2EC4A0" />
+              ) : roadmapStep === i ? (
+                <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid #7C5CBF', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
+              ) : (
+                <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.1)' }} />
+              )}
+              <span style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: roadmapStep >= i ? 'var(--bs-text-primary)' : 'var(--bs-text-tertiary)' }}>
+                {step}
+              </span>
+            </div>
+          ))}
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        </div>
+      )}
+
       {/* ── Fixed top bar ── */}
       <header className={styles.topBar}>
-        <span className={styles.topLogo}>BrandShift</span>
+        <Logo size="md" />
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <button className={styles.backBtn} onClick={() => router.push('/audit')}>
+            ← Back to audit
+          </button>
           <button
             className={styles.shareBtn}
             onClick={handleShareReport}
@@ -268,13 +360,27 @@ export default function Results() {
             <Share2 size={14} />
             {shareLoading ? 'Creating link…' : 'Share Report'}
           </button>
-          <button className={styles.topCta} onClick={() => router.push('/roadmap')}>
-            Generate Roadmap
+          <button className={styles.topCta} onClick={() => handleRoadmapCta('top_nav')}>
+            Generate Roadmap →
           </button>
         </div>
       </header>
 
       <div className={styles.content}>
+
+        {/* ── Message banner ── */}
+        {message === 'complete_roadmap' && (
+          <div style={{
+            background: 'rgba(124,92,191,0.1)', border: '1px solid rgba(124,92,191,0.3)',
+            borderRadius: 'var(--radius)', padding: '12px 20px', marginBottom: 24,
+            display: 'flex', alignItems: 'center', gap: 10,
+          }}>
+            <Info size={14} color="#7C5CBF" />
+            <span style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: 'var(--bs-text-secondary)' }}>
+              Generate your roadmap first to unlock the dashboard
+            </span>
+          </div>
+        )}
 
         {/* ══ 1 — Score Hero ══ */}
         <section className={styles.heroGrid}>
@@ -498,19 +604,16 @@ export default function Results() {
                         </div>
                         <AnimatedBar score={s} color={col} delay={i * 80} />
 
-                        {/* Justification — full text when expanded, two sentences when collapsed */}
                         {isExpanded ? (
                           justification && <p className={styles.dimExpandJust}>{justification}</p>
                         ) : (
                           justification && <p className={styles.dimSmallJust}>{getTwoSentences(justification)}</p>
                         )}
 
-                        {/* Evidence quote — always visible */}
                         {evidenceQ && (
                           <p className={styles.dimSmallEvidence}>{evidenceQ}</p>
                         )}
 
-                        {/* Improvement pill — always visible */}
                         {improvement && (
                           <span className={styles.improvePill}>
                             <ArrowUp size={10} style={{ marginRight: 4 }} />
@@ -518,7 +621,6 @@ export default function Results() {
                           </span>
                         )}
 
-                        {/* Voice words — expanded only, tone_voice dim */}
                         {isExpanded && voiceWords.length > 0 && (
                           <div className={styles.voicePills}>
                             {voiceWords.map((w, wi) => (
@@ -597,10 +699,7 @@ export default function Results() {
         <section className={styles.ctaSection}>
           <h2 className={styles.ctaHeading}>Ready to close the gaps?</h2>
           <p className={styles.ctaSub}>Generate a strategic roadmap tailored to your goals</p>
-          <button className={styles.ctaBtn} onClick={() => {
-            trackEvent('roadmap_cta_clicked', { brand_name: intakeData?.brandName, overall_score: scoreData?.overall_score, location: 'results_bottom' });
-            router.push('/roadmap');
-          }}>
+          <button className={styles.ctaBtn} onClick={() => handleRoadmapCta('results_bottom')}>
             Generate Roadmap →
           </button>
           <div className={styles.ctaBtnRow}>
@@ -650,5 +749,13 @@ export default function Results() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function Results() {
+  return (
+    <Suspense>
+      <ResultsInner />
+    </Suspense>
   );
 }

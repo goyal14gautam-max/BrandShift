@@ -586,6 +586,13 @@ export default function Dashboard() {
     }
   }, [isLoading, profile]);
 
+  // Redirect to results if no roadmap yet
+  useEffect(() => {
+    if (!isLoading && profile && !profile.current_roadmap) {
+      router.replace('/results?message=complete_roadmap');
+    }
+  }, [profile, isLoading, router]);
+
   // Mark brief opened on mount when new
   useEffect(() => {
     if (isBriefNew) markBriefOpened();

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, Suspense } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff } from 'lucide-react';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import Logo from '@/components/Logo';
@@ -9,6 +9,9 @@ import styles from './login.module.css';
 
 function LoginInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get('redirect') || '/dashboard';
+  const action = searchParams.get('action');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -25,11 +28,19 @@ function LoginInner() {
     return msg || 'Something went wrong. Please try again.';
   }
 
+  function getPostLoginUrl() {
+    if (action === 'generate_roadmap' && redirectTo === '/results') {
+      return '/results?generate=true';
+    }
+    return redirectTo;
+  }
+
   async function handleGoogleSignIn() {
     setLoading(true);
+    const next = getPostLoginUrl();
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin + '/auth/callback?next=/dashboard' },
+      options: { redirectTo: window.location.origin + `/auth/callback?next=${encodeURIComponent(next)}` },
     });
   }
 
@@ -39,7 +50,7 @@ function LoginInner() {
     setLoading(true);
     const { error: err } = await supabase.auth.signInWithPassword({ email, password });
     if (err) { setError(friendlyError(err.message)); setLoading(false); return; }
-    window.location.href = '/dashboard';
+    window.location.href = getPostLoginUrl();
   }
 
   async function handleMagicLink(e) {

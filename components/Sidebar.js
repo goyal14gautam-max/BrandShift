@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { useDashboard } from '@/hooks/useDashboard';
 import {
-  LayoutDashboard, Map, BarChart2, FileText,
+  LayoutDashboard, Map, FileText,
   BookOpen, Settings, LogOut,
 } from 'lucide-react';
 import Logo from '@/components/Logo';
@@ -14,7 +14,6 @@ import styles from './Sidebar.module.css';
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard',   href: '/dashboard'    },
   { icon: Map,             label: 'Roadmap',      href: '/roadmap'      },
-  { icon: BarChart2,       label: 'Brand Score',  href: '/results'      },
   { icon: FileText,        label: 'Reports',      href: '/reports'      },
   { icon: BookOpen,        label: 'Constitution', href: '/constitution'  },
   { icon: Settings,        label: 'Settings',     href: '/settings'     },

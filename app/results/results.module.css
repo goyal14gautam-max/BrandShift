@@ -28,6 +28,19 @@
   color: var(--bs-text-primary);
 }
 
+.backBtn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius);
+  padding: 10px 16px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--bs-text-secondary);
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+.backBtn:hover { color: var(--bs-text-primary); border-color: rgba(255,255,255,0.2); }
+
 .topCta {
   background: var(--bs-orange);
   color: white;
@@ -44,7 +57,7 @@
 
 /* ── Content wrapper ────────────────────────────────────────── */
 .content {
-  max-width: 1400px;
+  max-width: 900px;
   margin: 0 auto;
   padding: 0 40px 120px;
   padding-top: 56px; /* offset fixed topbar */
@@ -969,7 +982,7 @@
 }
 
 @media (max-width: 768px) {
-  .content { padding: 0 20px 80px; padding-top: 56px; }
+  .content { padding: 0 20px 80px; padding-top: 56px; max-width: 100%; }
   .topBar { padding: 0 20px; }
 
   .heroGrid {
