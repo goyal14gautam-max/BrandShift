@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
+import { callClaude } from '@/lib/claudeClient';
 import { getBrandProfile, updateBrandProfile } from '@/lib/supabase';
 
 export const maxDuration = 60;
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 export async function POST(request) {
   try {
@@ -67,7 +65,7 @@ Return ONLY this JSON, no other text:
 
 fit must be exactly one of: "use", "avoid", "test"`;
 
-    const response = await anthropic.messages.create({
+    const response = await callClaude({
       model: 'claude-sonnet-4-0',
       max_tokens: 600,
       messages: [{ role: 'user', content: prompt }],

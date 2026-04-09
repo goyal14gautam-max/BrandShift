@@ -234,7 +234,7 @@ export default function Constitution() {
       localStorage.removeItem('brandshift_constitution_progress');
       setScreen('result');
     } catch (e) {
-      setGenError('Generation failed: ' + e.message + '. Please try again.');
+      setGenError(e.message);
       setScreen('section');
     }
   }
@@ -489,11 +489,32 @@ export default function Constitution() {
           }
         </div>
 
-        {genError && (
-          <div style={{ background: 'rgba(232,98,42,0.12)', border: '1px solid #E8622A', borderRadius: 8, padding: '12px 16px', marginBottom: 16, color: '#E8622A', fontSize: 14 }}>
-            {genError}
-          </div>
-        )}
+        {genError && (() => {
+          const friendly = (() => {
+            if (genError.includes('overloaded') || genError.includes('529')) {
+              return { title: 'AI is busy right now', message: "Claude API is experiencing high demand. We'll retry automatically — or try again in 30 seconds.", action: 'Try again' };
+            }
+            if (genError.includes('rate_limit') || genError.includes('429')) {
+              return { title: 'Too many requests', message: 'Please wait a moment before trying again.', action: 'Try again in 60 seconds' };
+            }
+            if (genError.includes('timeout')) {
+              return { title: 'Request timed out', message: 'The generation took too long. Please try again.', action: 'Try again' };
+            }
+            return { title: 'Something went wrong', message: 'Unable to generate your constitution. Please try again.', action: 'Try again' };
+          })();
+          return (
+            <div style={{ background: 'rgba(232,160,48,0.08)', border: '1px solid rgba(232,160,48,0.25)', borderRadius: 'var(--radius)', padding: '16px 20px', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                <span style={{ fontSize: 18 }}>⚠️</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: 'var(--font-ui)', fontSize: 14, fontWeight: 500, color: 'var(--bs-amber)', marginBottom: 4 }}>{friendly.title}</div>
+                  <div style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: 'var(--bs-text-secondary)', lineHeight: 1.5, marginBottom: 12 }}>{friendly.message}</div>
+                  <button onClick={() => { setGenError(''); handleNext(); }} style={{ background: 'var(--bs-orange)', color: 'white', border: 'none', borderRadius: 'var(--radius)', padding: '8px 20px', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}>{friendly.action}</button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         <div className={styles.navRow}>
           <button className={styles.backBtn} onClick={handleBack}>← Back</button>

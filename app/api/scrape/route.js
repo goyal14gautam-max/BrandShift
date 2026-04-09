@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server';
 import { FirecrawlAppV1 as FirecrawlApp } from '@mendable/firecrawl-js';
-import Anthropic from '@anthropic-ai/sdk';
+import { callClaude } from '@/lib/claudeClient';
 import { cleanMarkdown } from '@/lib/cleaner';
 
 export const maxDuration = 300;
 
 const firecrawl = new FirecrawlApp({ apiKey: process.env.FIRECRAWL_API_KEY });
-const anthropic  = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 // ── Timeout wrapper ──────────────────────────────────────────────
 function withTimeout(promise, ms, fallback = '') {
@@ -212,7 +211,7 @@ async function scrapeInstagram(handle) {
 async function extractInstagramSignals(captions) {
   if (!captions || captions.length < 50) return '';
   try {
-    const response = await anthropic.messages.create({
+    const response = await callClaude({
       model: 'claude-sonnet-4-0',
       max_tokens: 600,
       messages: [{

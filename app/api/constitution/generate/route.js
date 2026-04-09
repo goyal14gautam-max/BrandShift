@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
+import { callClaude } from '@/lib/claudeClient';
 import { getBrandProfile, updateBrandProfile } from '@/lib/supabase';
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 // The 15 questions delivered via daily pulse
 const DAILY_QUEUE = [
@@ -103,7 +101,7 @@ Return ONLY this JSON, no other text:
 
   let response;
   try {
-    response = await anthropic.messages.create({
+    response = await callClaude({
       model: 'claude-sonnet-4-6',
       max_tokens: 2000,
       system: `You are a brand strategist synthesising a Brand Constitution from partial brand answers. Write with conviction for sections that have data. Return exactly "Building..." (the string) for any section lacking sufficient data — never invent or guess answers.`,

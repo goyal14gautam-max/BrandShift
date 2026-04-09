@@ -1,18 +1,16 @@
 import { NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
+import { callClaude } from '@/lib/claudeClient';
 
 export const maxDuration = 60;
 import { SCORING_SYSTEM_PROMPT, SCORING_USER_PROMPT } from '@/lib/prompts';
 import { saveAudit, getBrandProfile, createBrandProfile, saveScoreToHistory } from '@/lib/supabase';
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
 function fillPrompt(template, data) {
   return template.replace(/\{(\w+)\}/g, (_, key) => data[key] ?? '');
 }
 
-async function callClaude(prompt) {
-  const response = await anthropic.messages.create({
+async function callClaudeForScore(prompt) {
+  const response = await callClaude({
     model: 'claude-sonnet-4-0',
     max_tokens: 3000,
     system: SCORING_SYSTEM_PROMPT,
@@ -79,12 +77,12 @@ export async function POST(request) {
     scraped_comp2: scraped_comp2 || 'No data',
   });
 
-  let text = await callClaude(filledPrompt);
+  let text = await callClaudeForScore(filledPrompt);
   let parsed = extractJSON(text);
 
   // Retry once if parsing failed
   if (!parsed) {
-    text = await callClaude(filledPrompt);
+    text = await callClaudeForScore(filledPrompt);
     parsed = extractJSON(text);
   }
 
@@ -158,7 +156,7 @@ Return ONLY this JSON, no other text:
   "audience_alignment": number
 }`;
 
-      const compRes = await anthropic.messages.create({
+      const compRes = await callClaude({
         model: 'claude-sonnet-4-0',
         max_tokens: 300,
         messages: [{ role: 'user', content: competitorPrompt }],

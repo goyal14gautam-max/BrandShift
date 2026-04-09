@@ -1,13 +1,11 @@
 import { NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+import { callClaude } from '@/lib/claudeClient';
 
 export async function POST(request) {
   try {
     const { brandName, scoreData, shareUrl, contactName, senderName } = await request.json();
 
-    const response = await anthropic.messages.create({
+    const response = await callClaude({
       model: 'claude-sonnet-4-0',
       max_tokens: 600,
       system: `You are writing a cold outreach email for BrandShift, an AI brand analysis tool. The email should feel personal, specific, and non-salesy. It should show genuine insight about the brand. Never use generic phrases like "I hope this email finds you well". Be direct and specific. Keep it under 150 words.`,

@@ -1,17 +1,15 @@
 import { NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
+import { callClaude } from '@/lib/claudeClient';
 import { ROADMAP_PROMPT } from '@/lib/prompts';
 import { updateBrandProfile } from '@/lib/supabase';
 import { flattenRoadmapToTasks } from '@/lib/helpers';
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 function fillPrompt(template, data) {
   return template.replace(/\{(\w+)\}/g, (_, key) => data[key] ?? '');
 }
 
-async function callClaude(prompt) {
-  const response = await anthropic.messages.create({
+async function callClaudeForRoadmap(prompt) {
+  const response = await callClaude({
     model: 'claude-sonnet-4-0',
     max_tokens: 3000,
     messages: [{ role: 'user', content: prompt }],
@@ -43,7 +41,7 @@ export async function POST(request) {
   console.log('=== ROADMAP API CALLED ===');
   console.log('Brand:', brandName, '| Industry:', industry);
 
-  let text = await callClaude(filledPrompt);
+  let text = await callClaudeForRoadmap(filledPrompt);
   console.log('Claude raw response length:', text.length);
   console.log('Claude raw preview:', text.slice(0, 300));
 
@@ -51,7 +49,7 @@ export async function POST(request) {
 
   if (!parsed) {
     console.log('First parse failed, retrying...');
-    text = await callClaude(filledPrompt);
+    text = await callClaudeForRoadmap(filledPrompt);
     parsed = extractJSON(text);
   }
 

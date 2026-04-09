@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
+import { callClaude } from '@/lib/claudeClient';
 import { getBrandProfileAdmin, updateBrandProfile } from '@/lib/supabase';
 import { MONDAY_BRIEF_SYSTEM_PROMPT, buildMondayBriefPrompt } from '@/lib/prompts';
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 export async function POST(request) {
   try {
@@ -36,7 +34,7 @@ export async function POST(request) {
       recentScores,
     });
 
-    const response = await anthropic.messages.create({
+    const response = await callClaude({
       model:      'claude-sonnet-4-0',
       max_tokens: 1000,
       system:     MONDAY_BRIEF_SYSTEM_PROMPT,
