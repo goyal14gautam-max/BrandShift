@@ -1,899 +1,265 @@
 'use client';
 
-import { useState, useEffect, useRef, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Eye, Globe, Users, TrendingUp, MessageSquare, Target,
-  CheckCircle, AlertCircle, Download, Share2, Check,
-  ChevronDown, ChevronUp, ChevronLeft, ChevronRight, FileText, ArrowUp, AtSign, Info,
+  CheckCircle, AlertCircle, Download, Share2,
 } from 'lucide-react';
 import { useInView } from '@/hooks/useInView';
-import { useAuth } from '@/hooks/useAuth';
-import BrandRadarChart from '@/components/BrandRadarChart';
-import Tooltip from '@/components/Tooltip';
-import EvidenceSection from '@/components/EvidenceSection';
-import Logo from '@/components/Logo';
 import styles from './results.module.css';
-import { trackPageView, trackEvent } from '@/lib/analytics';
 
-// ── Dimension config (5 real dims) ─────────────────────────────
+// ── Dimension config ──────────────────────────────────────────
+
 const DIM_CONFIG = [
-  { key: 'visual_identity',        label: 'Visual Identity',      icon: Eye,           weight: 25 },
-  { key: 'tone_voice',             label: 'Brand Voice',          icon: MessageSquare, weight: 25 },
-  { key: 'trend_relevance',        label: 'Trend Relevance',      icon: TrendingUp,    weight: 20 },
-  { key: 'competitor_positioning', label: 'Competitive Position', icon: Target,        weight: 20 },
-  { key: 'audience_alignment',     label: 'Audience Alignment',   icon: Users,         weight: 10 },
+  { key: 'visual_identity',        label: 'Visual Identity',      icon: Eye,            weight: 20 },
+  { key: 'digital_presence',       label: 'Digital Presence',     icon: Globe,          weight: 20 },
+  { key: 'audience_alignment',     label: 'Social Performance',   icon: Users,          weight: 15 },
+  { key: 'trend_relevance',        label: 'Trend Adherence',      icon: TrendingUp,     weight: 15 },
+  { key: 'tone_voice',             label: 'Brand Voice',          icon: MessageSquare,  weight: 15 },
+  { key: 'competitor_positioning', label: 'Competitive Position', icon: Target,         weight: 15 },
 ];
 
-const KELLER_LEVELS = [
-  { level: 1, name: 'People know you exist',              desc: 'Building basic awareness' },
-  { level: 2, name: 'People know what you stand for',     desc: 'Defined brand meaning' },
-  { level: 3, name: 'People have a reason to choose you', desc: 'Strong brand judgements' },
-  { level: 4, name: 'People are loyal advocates',         desc: 'Deep brand resonance' },
-];
-
-const FRAMEWORK_TOOLTIPS = {
-  visual_identity:        'Based on brand recall research — brands with distinctive visual assets need 40% less advertising spend to achieve the same awareness.',
-  tone_voice:             'Your brand voice is how customers describe your personality. Consistent voice builds trust 3x faster than inconsistent messaging.',
-  trend_relevance:        'Measures how many different moments and occasions your brand shows up for. More occasions = more buying opportunities.',
-  competitor_positioning: 'How clearly you stand out from competitors in your customer\'s mind. If customers can\'t explain why they\'d choose you over a competitor, this score is low.',
-  audience_alignment:     'How well everything you put out — website, social, content — is aimed at the same specific person. Mixed signals confuse customers.',
-};
-
-const KELLER_TOOLTIP = 'This measures how deeply customers connect with your brand — from basic awareness all the way to loyal advocacy. Most Indian D2C brands are at Level 2.';
-
-const DIM_LABELS = {
-  visual_identity:        'Visual Identity',
-  tone_voice:             'Brand Voice',
-  trend_relevance:        'Trend Relevance',
-  competitor_positioning: 'Competitor Gap',
-  audience_alignment:     'Audience Fit',
-};
-
-// ── Helpers ────────────────────────────────────────────────────
 function scoreColor(s) {
-  if (s >= 65) return 'var(--bs-teal)';
-  if (s >= 45) return 'var(--bs-amber)';
-  return 'var(--destructive)';
+  if (s < 45) return 'var(--destructive)';
+  if (s <= 65) return 'var(--bs-amber)';
+  return 'var(--bs-teal)';
 }
 
-function urgencyStyle(u) {
-  if (!u) return {};
-  const lvl = u.toLowerCase();
-  if (lvl.includes('high'))   return { bg: 'rgba(232,98,42,0.12)',  color: 'var(--bs-orange)', border: 'rgba(232,98,42,0.3)',  label: 'Action Needed' };
-  if (lvl.includes('medium')) return { bg: 'rgba(232,160,48,0.12)', color: 'var(--bs-amber)',  border: 'rgba(232,160,48,0.3)', label: 'Monitor' };
-  return                             { bg: 'rgba(46,196,160,0.12)', color: 'var(--bs-teal)',   border: 'rgba(46,196,160,0.3)', label: 'On Track' };
-}
+// ── Animated Score Ring ───────────────────────────────────────
 
-function calcSimulation(dims, overall) {
-  const weights = {
-    visual_identity: 0.25, tone_voice: 0.25,
-    trend_relevance: 0.20, competitor_positioning: 0.20, audience_alignment: 0.10,
-  };
-  if (!dims) return { simulated: Math.min(overall + 12, 100), improvement: 12 };
-  const scores = Object.entries(weights).map(([k, w]) => ({ k, score: dims[k]?.score ?? overall, w }));
-  const bottom2 = [...scores].sort((a, b) => a.score - b.score).slice(0, 2).map(d => d.k);
-  const simTotal = Math.round(
-    scores.map(d => ({ s: bottom2.includes(d.k) ? Math.max(d.score, 70) : d.score, w: d.w }))
-          .reduce((acc, d) => acc + d.s * d.w, 0)
-  );
-  const improvement = Math.max(simTotal - overall, 1);
-  return { simulated: Math.min(overall + improvement, 100), improvement };
-}
-
-function truncate(text, maxLen = 180) {
-  if (!text || text.length <= maxLen) return text || '';
-  return text.slice(0, maxLen).trimEnd() + '…';
-}
-
-function getThreeSentences(text) {
-  if (!text) return '';
-  const sentences = text.match(/[^.!?]+[.!?]+/g) || [];
-  return sentences.slice(0, 3).join(' ').trim() || text;
-}
-
-function getBrandDisplayName(nameOrUrl) {
-  if (!nameOrUrl) return '';
-  if (nameOrUrl.includes('http') || nameOrUrl.includes('www.')) {
-    try {
-      const url = nameOrUrl.startsWith('http') ? nameOrUrl : 'https://' + nameOrUrl;
-      const hostname = new URL(url).hostname.replace('www.', '').split('.')[0];
-      return hostname.charAt(0).toUpperCase() + hostname.slice(1);
-    } catch {
-      return nameOrUrl.slice(0, 20);
-    }
-  }
-  return nameOrUrl.length > 20 ? nameOrUrl.slice(0, 20) + '…' : nameOrUrl;
-}
-
-// ── Sub-components ─────────────────────────────────────────────
 function ScoreRing({ score }) {
-  const [offset, setOffset] = useState(534);
+  const R = 85;
+  const circ = 2 * Math.PI * R;
+  const [offset, setOffset]       = useState(circ);
   const [displayed, setDisplayed] = useState(0);
-  const circ = 534;
 
   useEffect(() => {
-    const t = setTimeout(() => setOffset(circ - (score / 100) * circ), 300);
-    let i = 0; const steps = 60; const dur = 1500;
+    const targetOffset = circ - (score / 100) * circ;
+    const timer = setTimeout(() => setOffset(targetOffset), 300);
+    let frame = 0;
+    const total = 60;
     const id = setInterval(() => {
-      i++; setDisplayed(Math.round(score * (i / steps)));
-      if (i >= steps) clearInterval(id);
-    }, dur / steps);
-    return () => { clearTimeout(t); clearInterval(id); };
+      frame++;
+      setDisplayed(Math.round(score * (frame / total)));
+      if (frame >= total) clearInterval(id);
+    }, 1500 / total);
+    return () => { clearTimeout(timer); clearInterval(id); };
   }, [score, circ]);
 
   const color = score >= 65 ? 'var(--bs-teal)' : 'var(--bs-amber)';
+
   return (
-    <div className={styles.ringWrap}>
-      <svg viewBox="0 0 200 200" width="160" height="160" className={styles.ringSvg}>
-        <circle cx="100" cy="100" r="85" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8" />
-        <circle cx="100" cy="100" r="85" fill="none" stroke={color} strokeWidth="8" strokeLinecap="round"
-          strokeDasharray={circ} strokeDashoffset={offset}
+    <div className={styles.ring}>
+      <svg viewBox="0 0 200 200" width="200" height="200" style={{ transform: 'rotate(-90deg)' }}>
+        <circle cx="100" cy="100" r={R} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8" />
+        <circle cx="100" cy="100" r={R} fill="none" stroke={color} strokeWidth="8"
+          strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={offset}
           style={{ transition: 'stroke-dashoffset 1.5s ease-out' }} />
       </svg>
       <div className={styles.ringCenter}>
-        <span className={styles.ringScore}>{displayed}</span>
+        <span className={styles.ringNumber}>{displayed}</span>
         <span className={styles.ringLabel}>out of 100</span>
       </div>
     </div>
   );
 }
 
-function AnimatedBar({ score, color, delay }) {
-  const [width, setWidth] = useState(0);
-  const [ref, inView] = useInView(0.2);
-  useEffect(() => {
-    if (!inView) return;
-    const t = setTimeout(() => setWidth(score), delay || 0);
-    return () => clearTimeout(t);
-  }, [inView, score, delay]);
-  return (
-    <div className={styles.dimBar} ref={ref}>
-      <div className={styles.dimFill} style={{ width: `${width}%`, background: color, transition: 'width 0.8s ease' }} />
-    </div>
-  );
-}
+// ── Dimension Card ────────────────────────────────────────────
 
-function FadeUp({ children, delay = 0 }) {
+function DimCard({ dim, score, justification, weight, index }) {
   const [ref, inView] = useInView(0.1);
+  const [barWidth, setBarWidth] = useState(0);
+  const Icon = dim.icon;
+
+  useEffect(() => {
+    if (inView) {
+      const timer = setTimeout(() => setBarWidth(score), index * 100);
+      return () => clearTimeout(timer);
+    }
+  }, [inView, score, index]);
+
+  const color = scoreColor(score);
+
   return (
-    <div ref={ref} className={`${styles.fadeUp} ${inView ? styles.fadeUpVisible : ''}`}
-      style={{ transitionDelay: `${delay}ms` }}>
-      {children}
+    <div ref={ref} className={styles.dimCard} style={{ animationDelay: `${index * 80}ms` }}>
+      <div className={styles.dimHeader}>
+        <div>
+          <div className={styles.dimNameRow}>
+            <Icon size={16} style={{ color: 'var(--bs-violet)' }} />
+            <span className={styles.dimName}>{dim.label}</span>
+          </div>
+          <span className={styles.dimWeight}>Weight: {weight}%</span>
+        </div>
+        <span className={styles.dimScore} style={{ color }}>{score}</span>
+      </div>
+      <div className={styles.dimBar}>
+        <div className={styles.dimBarFill} style={{ width: `${barWidth}%`, background: color, transition: 'width 1s ease' }} />
+      </div>
+      <p className={styles.dimJustification}>{justification}</p>
     </div>
   );
 }
 
-function Toast({ visible }) {
-  return <div className={`${styles.toast} ${visible ? styles.toastVisible : ''}`}>Copied!</div>;
-}
+// ── Main Component ────────────────────────────────────────────
 
-// ── Main page (inner) ──────────────────────────────────────────
-function ResultsInner() {
+export default function Results() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const { user } = useAuth();
+  const [scoreData, setScoreData] = useState(null);
+  const [brandData, setBrandData] = useState(null);
+  const [copied, setCopied]       = useState(false);
 
-  const shouldGenerate = searchParams.get('generate') === 'true';
-  const message = searchParams.get('message');
-
-  const [scoreData, setScoreData]   = useState(null);
-  const [intakeData, setIntakeData] = useState({});
-  const [scrapedData, setScrapedData] = useState(null);
-  const [toastVisible, setToastVisible]   = useState(false);
-  const [expandedDim, setExpandedDim]     = useState(null);
-  const [shareLoading, setShareLoading]   = useState(false);
-  const [shareModalUrl, setShareModalUrl] = useState('');
-  const [shareCopied, setShareCopied]     = useState(false);
-  const [isGeneratingRoadmap, setIsGeneratingRoadmap] = useState(false);
-  const [roadmapStep, setRoadmapStep] = useState(0);
-  const [autoGenerating, setAutoGenerating] = useState(false);
-  const [activeCard, setActiveCard] = useState(0);
-  const carouselRef = useRef(null);
-  const isDragging = useRef(false);
-  const startX = useRef(0);
-  const scrollLeftRef = useRef(0);
+  const [findingsRef, findingsInView] = useInView(0.1);
+  const [evidenceRef, evidenceInView] = useInView(0.1);
+  const [ctaRef, ctaInView]           = useInView(0.1);
 
   useEffect(() => {
-    const raw = localStorage.getItem('brandshift_score');
+    const raw   = localStorage.getItem('brandshift_score');
+    const brand = localStorage.getItem('brandshift_intake') || localStorage.getItem('brandshift_brand');
     if (!raw) { router.push('/audit'); return; }
-    const score = JSON.parse(raw);
-    setScoreData(score);
-    const intake = localStorage.getItem('brandshift_intake');
-    const intakeParsed = intake ? JSON.parse(intake) : {};
-    if (intake) setIntakeData(intakeParsed);
-    const scraped = localStorage.getItem('brandshift_scraped');
-    if (scraped) setScrapedData(JSON.parse(scraped));
-    trackPageView('results_page');
-    trackEvent('results_viewed', {
-      brand_name: intakeParsed?.brandName,
-      overall_score: score?.overall_score,
-      rebrand_urgency: score?.rebrand_urgency,
-    });
-  }, [router]);
-
-  // Auto-generate trigger when returning from login
-  useEffect(() => {
-    if (shouldGenerate && user && !autoGenerating) {
-      setAutoGenerating(true);
-      localStorage.removeItem('brandshift_pending_roadmap');
-      setIsGeneratingRoadmap(true);
-      setTimeout(() => router.push('/roadmap'), 4000);
-    }
-  }, [shouldGenerate, user, autoGenerating, router]);
-
-  // Advance roadmap step while generating
-  useEffect(() => {
-    if (!isGeneratingRoadmap) return;
-    const interval = setInterval(() => {
-      setRoadmapStep(prev => Math.min(prev + 1, 3));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [isGeneratingRoadmap]);
-
-  function handleRoadmapCta(location) {
-    trackEvent('roadmap_cta_clicked', {
-      brand_name: intakeData?.brandName,
-      overall_score: scoreData?.overall_score,
-      location,
-    });
-    if (!user) {
-      localStorage.setItem('brandshift_pending_roadmap', JSON.stringify({
-        brandName: intakeData?.brandName,
-      }));
-      router.push('/login?redirect=/results&action=generate_roadmap');
-      return;
-    }
-    setIsGeneratingRoadmap(true);
-    setTimeout(() => router.push('/roadmap'), 4000);
-  }
-
-  function handleShare() {
-    navigator.clipboard.writeText(window.location.href).catch(() => {});
-    setToastVisible(true);
-    setTimeout(() => setToastVisible(false), 2000);
-  }
-
-  async function handleShareReport() {
-    trackEvent('report_shared', { brand_name: intakeData?.brandName });
-    setShareLoading(true);
     try {
-      const res = await fetch('/api/share/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          brandName:  intakeData.brandName || 'Brand',
-          industry:   intakeData.industry  || '',
-          scoreData,
-          intakeData,
-          createdBy:  'results_page',
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setShareModalUrl(data.shareUrl);
-        navigator.clipboard.writeText(data.shareUrl).catch(() => {});
-        setToastVisible(true);
-        setTimeout(() => setToastVisible(false), 2500);
-      }
-    } catch {}
-    finally { setShareLoading(false); }
-  }
-
-  function closeShareModal() {
-    setShareModalUrl('');
-    setShareCopied(false);
-  }
+      setScoreData(JSON.parse(raw));
+      if (brand) setBrandData(JSON.parse(brand));
+    } catch { router.push('/audit'); }
+  }, [router]);
 
   if (!scoreData) return null;
 
   const dims    = scoreData.dimensions || {};
   const overall = scoreData.overall_score || 0;
-  const sourceAvail = scoreData.sources_available || {};
-  const cw = scoreData.channel_weights || { instagram: 30, website: 30, competitor: 25, blog: 15 };
-  const kellerLevel = scoreData.keller_level || null;
-  const kellerInfo  = kellerLevel ? KELLER_LEVELS[kellerLevel - 1] : null;
-  const evidence    = (scoreData.evidence_quotes || []).slice(0, 6);
-  const urgStyle    = urgencyStyle(scoreData.rebrand_urgency);
-  const sim         = calcSimulation(dims, overall);
 
-  const sourcesCount = [sourceAvail.homepage, sourceAvail.instagram, sourceAvail.competitors, sourceAvail.blog]
-    .filter(Boolean).length;
+  // Derive Digital Presence if not returned by API
+  const digitalPresenceScore = dims.digital_presence?.score
+    ?? Math.round(((dims.visual_identity?.score || overall) + (dims.tone_voice?.score || overall)) / 2);
 
-  const brandTypeLabel =
-    scoreData.brand_type === 'social-first'   ? 'Social First' :
-    scoreData.brand_type === 'content-first'  ? 'Content First' : 'Balanced';
+  const allDims = DIM_CONFIG.map(d => {
+    if (d.key === 'digital_presence') {
+      return { ...d, score: digitalPresenceScore, justification: dims.digital_presence?.justification || 'Derived from homepage and content analysis.' };
+    }
+    const dim = dims[d.key] || {};
+    return { ...d, score: dim.score || 0, justification: dim.justification || '' };
+  });
 
-  const highestDimScore = Math.max(...DIM_CONFIG.map(d => dims[d.key]?.score || overall));
-  const sortedByScore   = [...DIM_CONFIG].sort((a, b) => (dims[a.key]?.score ?? overall) - (dims[b.key]?.score ?? overall));
-  const lowestDim       = sortedByScore[0];
-  const bottom2Dims     = sortedByScore.slice(0, 2);
-  const gap1Name        = DIM_LABELS[bottom2Dims[0]?.key] || '';
-  const gap2Name        = DIM_LABELS[bottom2Dims[1]?.key] || '';
-  const nextLevelAction = dims[lowestDim?.key]?.improvement_action || '';
+  const confidence = scoreData.data_confidence || 'medium';
+  const urgency    = scoreData.rebrand_urgency || 'medium';
+  const evidence   = (scoreData.evidence_quotes || []).slice(0, 4);
 
-  const channels = [
-    { label: 'Instagram',   value: cw.instagram   || 0 },
-    { label: 'Website',     value: cw.website      || 0 },
-    { label: 'Competitors', value: cw.competitor   || 0 },
-    { label: 'Blog',        value: cw.blog         || 0 },
-  ];
+  function scrollToCta() {
+    document.getElementById('results-cta')?.scrollIntoView({ behavior: 'smooth' });
+  }
+
+  async function handleShare() {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  }
 
   return (
     <div className={styles.page}>
 
-      {/* ── Roadmap generation overlay ── */}
-      {isGeneratingRoadmap && (
-        <div style={{
-          position: 'fixed', inset: 0,
-          background: 'rgba(8,8,14,0.9)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center',
-          zIndex: 200,
-        }}>
-          <div style={{ marginBottom: 32 }}>
-            <Logo size="lg" />
-          </div>
-          <div style={{ textAlign: 'center', marginBottom: 32 }}>
-            <p style={{ fontFamily: 'var(--font-headline)', fontSize: 24, color: 'var(--bs-text-primary)', marginBottom: 8 }}>
-              Building your roadmap...
-            </p>
-            <p style={{ fontFamily: 'var(--font-ui)', fontSize: 14, color: 'var(--bs-text-secondary)' }}>
-              This takes about 20–30 seconds
-            </p>
-          </div>
-          {['Analysing your brand gaps', 'Prioritising quick wins', 'Building your 8-week plan', 'Creating your vision roadmap'].map((step, i) => (
-            <div key={i} style={{
-              display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10,
-              opacity: roadmapStep >= i ? 1 : 0.3, transition: 'opacity 0.5s ease',
-            }}>
-              {roadmapStep > i ? (
-                <CheckCircle size={14} color="#2EC4A0" />
-              ) : roadmapStep === i ? (
-                <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid #7C5CBF', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
-              ) : (
-                <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.1)' }} />
-              )}
-              <span style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: roadmapStep >= i ? 'var(--bs-text-primary)' : 'var(--bs-text-tertiary)' }}>
-                {step}
-              </span>
-            </div>
-          ))}
-          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-        </div>
-      )}
-
-      {/* ── Fixed top bar ── */}
+      {/* Top bar */}
       <header className={styles.topBar}>
-        <Logo size="md" />
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <button className={styles.backBtn} onClick={() => router.push('/audit')}>
-            ← Back to audit
-          </button>
-          <button
-            className={styles.shareBtn}
-            onClick={handleShareReport}
-            disabled={shareLoading}
-          >
-            <Share2 size={14} />
-            {shareLoading ? 'Creating link…' : 'Share Report'}
-          </button>
-          <button className={styles.topCta} onClick={() => handleRoadmapCta('top_nav')}>
-            Generate Roadmap →
-          </button>
-        </div>
+        <span className={styles.navLogo}>BrandShift</span>
+        <button className={styles.topCta} onClick={scrollToCta}>Generate Roadmap</button>
       </header>
 
       <div className={styles.content}>
 
-        {/* ── Message banner ── */}
-        {message === 'complete_roadmap' && (
-          <div style={{
-            background: 'rgba(124,92,191,0.1)', border: '1px solid rgba(124,92,191,0.3)',
-            borderRadius: 'var(--radius)', padding: '12px 20px', marginBottom: 24,
-            display: 'flex', alignItems: 'center', gap: 10,
-          }}>
-            <Info size={14} color="#7C5CBF" />
-            <span style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: 'var(--bs-text-secondary)' }}>
-              Generate your roadmap first to unlock the dashboard
+        {/* ── Section 1: Score Hero ── */}
+        <section className={styles.scoreHero}>
+          <ScoreRing score={overall} />
+          <h1 className={styles.verdictHeading}>{scoreData.verdict_headline || scoreData.verdict?.split('.')[0] || 'Your Brand Score'}</h1>
+          <p className={styles.verdictDesc}>{scoreData.verdict || ''}</p>
+
+          <div className={styles.badgeRow}>
+            <span className={`${styles.badge} ${styles[`confidence${confidence.charAt(0).toUpperCase() + confidence.slice(1)}`]}`}>
+              {confidence.charAt(0).toUpperCase() + confidence.slice(1)} Confidence
+            </span>
+            <span className={`${styles.badge} ${styles[`urgency${urgency.charAt(0).toUpperCase() + urgency.slice(1)}`]}`}>
+              {urgency === 'high' ? 'Action Needed' : urgency === 'medium' ? 'Monitor' : 'On Track'}
             </span>
           </div>
+
+          <div className={styles.paletteRow}>
+            {['var(--bs-violet)', 'var(--bs-teal)', '#4CAF50', 'var(--bs-amber)', 'rgba(124,92,191,0.6)', 'var(--bs-orange)'].map((c, i) => (
+              <div key={i} className={styles.paletteSquare} style={{ background: c }} />
+            ))}
+          </div>
+        </section>
+
+        {/* ── Section 2: Dimension Breakdown ── */}
+        <section className={styles.section}>
+          <h2 className={styles.sectionHeading}>Dimension Breakdown</h2>
+          <div className={styles.dimGrid}>
+            {allDims.map((d, i) => (
+              <DimCard key={d.key} dim={d} score={d.score} justification={d.justification} weight={d.weight} index={i} />
+            ))}
+          </div>
+        </section>
+
+        {/* ── Section 3: Key Findings ── */}
+        <section className={styles.section} ref={findingsRef}>
+          <h2 className={styles.sectionHeading}>Key Findings</h2>
+          <div className={`${styles.findingsGrid} ${findingsInView ? styles.fadeIn : ''}`}>
+            <div className={styles.findingCard} style={{ borderColor: 'rgba(46,196,160,0.2)' }}>
+              <div className={styles.findingHeader}>
+                <CheckCircle size={18} style={{ color: 'var(--bs-teal)' }} />
+                <span className={styles.findingLabel} style={{ color: 'var(--bs-teal)' }}>Biggest Strength</span>
+              </div>
+              <h3 className={styles.findingTitle}>{scoreData.biggest_strength || 'N/A'}</h3>
+              {evidence[0]?.quote && <p className={styles.findingDetail}>{evidence[0].quote}</p>}
+              {evidence[0]?.source && <p className={styles.findingSource}>Sources: {evidence[0].source}</p>}
+            </div>
+            <div className={styles.findingCard} style={{ borderColor: 'rgba(232,98,42,0.2)' }}>
+              <div className={styles.findingHeader}>
+                <AlertCircle size={18} style={{ color: 'var(--bs-orange)' }} />
+                <span className={styles.findingLabel} style={{ color: 'var(--bs-orange)' }}>Biggest Gap</span>
+              </div>
+              <h3 className={styles.findingTitle}>{scoreData.biggest_gap || 'N/A'}</h3>
+              {evidence[1]?.observation && <p className={styles.findingDetail}>{evidence[1].observation}</p>}
+              {evidence[1]?.source && <p className={styles.findingSource}>Sources: {evidence[1].source}</p>}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Section 4: Evidence ── */}
+        {evidence.length > 0 && (
+          <section className={styles.section} ref={evidenceRef}>
+            <h2 className={styles.sectionHeading}>Evidence</h2>
+            {evidence.map((ev, i) => (
+              <div key={i} className={`${styles.evidenceCard} ${evidenceInView ? styles.fadeIn : ''}`} style={{ animationDelay: `${i * 120}ms` }}>
+                <p className={styles.evidenceSource}>{ev.source || 'Source'}</p>
+                {ev.quote && <p className={styles.evidenceQuote}>&ldquo;{ev.quote}&rdquo;</p>}
+                {ev.observation && <p className={styles.evidenceObs}>{ev.observation}</p>}
+              </div>
+            ))}
+          </section>
         )}
 
-        {/* ══ 1 — Score Hero ══ */}
-        <div className={styles.heroSection}>
-        <section className={styles.heroGrid}>
-
-          {/* Left: ring + verdict */}
-          <div className={styles.heroLeft}>
-            <ScoreRing score={overall} />
-            <h1 className={styles.verdict}>{scoreData.verdict || 'Your Brand Score'}</h1>
-            <div className={styles.badgeRow}>
-              {scoreData.data_confidence && (
-                <span className={styles.badge} style={{
-                  background: 'rgba(124,92,191,0.12)', color: 'var(--bs-violet)', borderColor: 'rgba(124,92,191,0.25)',
-                }}>
-                  {scoreData.data_confidence.charAt(0).toUpperCase() + scoreData.data_confidence.slice(1)} Confidence
-                </span>
-              )}
-              {scoreData.rebrand_urgency && (
-                <span className={styles.badge} style={{ background: urgStyle.bg, color: urgStyle.color, borderColor: urgStyle.border }}>
-                  {urgStyle.label}
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Right: 2×2 metric cards */}
-          <div className={styles.heroRight}>
-            <div className={styles.metricsGrid}>
-
-              {/* Card 1: Brand maturity */}
-              <div className={styles.metricCard}>
-                <div className={styles.metricLabel}>
-                  Brand maturity
-                  <Tooltip content={KELLER_TOOLTIP} width={240} />
-                </div>
-                <div className={styles.metricValue} style={{ color: 'var(--bs-violet)' }}>
-                  {kellerLevel ? `Level ${kellerLevel}` : '—'}
-                  <span className={styles.metricValueSuffix}> of 4</span>
-                </div>
-                <div className={styles.metricSub}>{kellerInfo?.name || 'Run audit for level'}</div>
-              </div>
-
-              {/* Card 2: Primary channel */}
-              <div className={styles.metricCard}>
-                <div className={styles.metricLabel}>Primary channel</div>
-                <div className={styles.metricValue}>{brandTypeLabel}</div>
-                <div className={styles.metricSub}>How we weighted your analysis</div>
-              </div>
-
-              {/* Card 3: Instagram signal */}
-              <div className={styles.metricCard}>
-                <div className={styles.metricLabel}>Instagram signal</div>
-                {sourceAvail.instagram ? (
-                  <>
-                    <div className={styles.metricValue} style={{ color: 'var(--bs-teal)', fontSize: 16 }}>
-                      <Check size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} />
-                      Analysed
-                    </div>
-                    <div className={styles.metricSub}>Included in scoring</div>
-                  </>
-                ) : (
-                  <>
-                    <div className={styles.metricValue} style={{ color: 'var(--bs-text-tertiary)', fontSize: 14 }}>
-                      Not connected
-                    </div>
-                    <div className={styles.metricSub}>Add handle for better accuracy</div>
-                  </>
-                )}
-              </div>
-
-              {/* Card 4: Sources analysed */}
-              <div className={styles.metricCard}>
-                <div className={styles.metricLabel}>Sources analysed</div>
-                <div className={styles.sourceIconRow}>
-                  <Globe   size={16} style={{ color: sourceAvail.homepage     ? 'var(--bs-teal)' : 'var(--bs-text-tertiary)' }} />
-                  <AtSign size={16} style={{ color: sourceAvail.instagram  ? 'var(--bs-teal)' : 'var(--bs-text-tertiary)' }} />
-                  <Users   size={16} style={{ color: sourceAvail.competitors  ? 'var(--bs-teal)' : 'var(--bs-text-tertiary)' }} />
-                  <FileText size={16} style={{ color: sourceAvail.blog        ? 'var(--bs-teal)' : 'var(--bs-text-tertiary)' }} />
-                </div>
-                <div className={styles.metricSub}>
-                  {sourcesCount} of 4 sources · {scoreData.data_confidence || '—'} confidence
-                </div>
-              </div>
-
-            </div>
+        {/* ── Section 5: Bottom CTA ── */}
+        <section id="results-cta" className={styles.ctaSection} ref={ctaRef}>
+          <div className={ctaInView ? styles.fadeIn : ''}>
+            <h2 className={styles.ctaHeading}>Ready to close the gaps?</h2>
+            <p className={styles.ctaSub}>Generate a strategic roadmap tailored to your goals</p>
+            <button className={styles.ctaBtn} onClick={() => router.push('/roadmap-setup')}>Generate Roadmap →</button>
           </div>
         </section>
-        </div>
-
-        {/* ══ 2 — Score Simulation + Brand Maturity Path ══ */}
-        <section className={styles.heroTransition}>
-
-          {/* Insight card */}
-          {sim.improvement > 0 && (
-            <div className={styles.simInsightCard}>
-              <TrendingUp size={24} style={{ color: 'var(--bs-teal)', flexShrink: 0 }} />
-              <div style={{ flex: 1 }}>
-                <p className={styles.simInsightMain}>
-                  Fixing your top 2 gaps could push your score from {Math.round(overall)} to {Math.round(sim.simulated)}
-                </p>
-                {gap1Name && gap2Name && (
-                  <p className={styles.simInsightSub}>
-                    {gap1Name} and {gap2Name} are your biggest opportunities
-                  </p>
-                )}
-              </div>
-              <span className={styles.simInsightDelta}>+{Math.round(sim.improvement)}</span>
-            </div>
-          )}
-
-          {/* Brand maturity path */}
-          {kellerLevel && (
-            <>
-              <div className={styles.maturityWrap}>
-                <div className={styles.maturityLine}>
-                  <div className={styles.maturityLineActive}
-                    style={{ width: `${((kellerLevel - 1) / 3) * 100}%` }} />
-                </div>
-                <div className={styles.maturityNodes}>
-                  {KELLER_LEVELS.map((lvl) => {
-                    const achieved  = lvl.level < kellerLevel;
-                    const current   = lvl.level === kellerLevel;
-                    const nodeClass = achieved ? styles.matNodeAchieved : current ? styles.matNodeCurrent : styles.matNodeFuture;
-                    const textClass = achieved || current ? styles.matLabelActive : styles.matLabelFuture;
-                    return (
-                      <div key={lvl.level} className={styles.matNodeWrap}>
-                        <div className={`${styles.matNode} ${nodeClass}`}>
-                          {achieved
-                            ? <Check size={16} />
-                            : <span style={{ fontFamily: 'var(--font-mono)', fontSize: 14 }}>{lvl.level}</span>}
-                        </div>
-                        <p className={`${styles.matLabel} ${textClass}`}>{lvl.name}</p>
-                        <p className={styles.matDesc}>{lvl.desc}</p>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className={styles.maturityCard}>
-                <span className={styles.matCardLabel}>You are here:</span>
-                <h3 className={styles.matCardTitle}>{kellerInfo?.name}</h3>
-                {scoreData.keller_level_explanation && (
-                  <p className={styles.matCardText}>{truncate(scoreData.keller_level_explanation, 320)}</p>
-                )}
-                {kellerLevel < 4 && nextLevelAction && (
-                  <>
-                    <div className={styles.matDivider} />
-                    <span className={styles.matCardLabel}>To reach Level {kellerLevel + 1}:</span>
-                    <p className={styles.matNextText}>{nextLevelAction}</p>
-                  </>
-                )}
-              </div>
-            </>
-          )}
-        </section>
-
-        {/* ══ 3 — Radar + Dimensions ══ */}
-        <section className={styles.sectionSpaced}>
-          <h2 className={styles.sectionTitle}>Where the gaps are</h2>
-          <p className={styles.sectionSub}>Your brand scored across 5 dimensions — here's what's driving the number</p>
-
-          {/* Part A: Radar chart row */}
-          <div className={styles.radarPartA}>
-
-            {/* LEFT: radar chart */}
-            <div>
-              <h2 className={styles.sectionTitleSm}>Brand shape</h2>
-              <p className={styles.sectionSubSm}>Your strengths and gaps at a glance</p>
-              <BrandRadarChart
-                brandData={scoreData.dimensions}
-                brandName={intakeData.brandName || 'Your Brand'}
-                competitorName={scoreData.competitor_scores?.name || null}
-                competitorData={scoreData.competitor_scores?.dimensions || null}
-              />
-            </div>
-
-            {/* RIGHT: weights + confidence + sources + legend */}
-            <div className={styles.radarRightPanel}>
-
-              {/* Weight bars */}
-              <p className={styles.panelHeading}>How we weighted this analysis</p>
-              {channels.map(ch => (
-                <div key={ch.label} className={styles.weightRow}>
-                  <span className={styles.weightLabel}>{ch.label}</span>
-                  <div className={styles.weightBarWrap}>
-                    <div className={styles.weightBarFill} style={{ width: `${ch.value}%` }} />
-                  </div>
-                  <span className={styles.weightValue}>{ch.value}%</span>
-                </div>
-              ))}
-
-              {/* Data confidence */}
-              <div className={styles.confidenceBlock}>
-                <p className={styles.panelHeading}>Data confidence</p>
-                <div className={styles.confidenceDots}>
-                  {(() => {
-                    const lvl = (scoreData.data_confidence || '').toLowerCase();
-                    const filled = lvl.includes('high') ? 3 : lvl.includes('medium') ? 2 : 1;
-                    const col = lvl.includes('high') ? 'var(--bs-teal)' : lvl.includes('medium') ? 'var(--bs-amber)' : 'var(--bs-orange)';
-                    return [0, 1, 2].map(i => (
-                      <span key={i} className={styles.confidenceDot}
-                        style={{ background: i < filled ? col : 'rgba(255,255,255,0.1)' }} />
-                    ));
-                  })()}
-                </div>
-                <p className={styles.confidenceText}>
-                  {scoreData.data_confidence ? scoreData.data_confidence.charAt(0).toUpperCase() + scoreData.data_confidence.slice(1) : '—'} confidence
-                </p>
-
-                {/* Source pills */}
-                <div className={styles.sourcePills}>
-                  {[
-                    { label: 'Website',     key: 'homepage' },
-                    { label: 'Instagram',   key: 'instagram' },
-                    { label: 'Competitors', key: 'competitors' },
-                    { label: 'Blog',        key: 'blog' },
-                  ].map(s => (
-                    <span key={s.label} className={sourceAvail[s.key] ? styles.pillOn : styles.pillOff}>
-                      {s.label}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* Competitor legend */}
-              {scoreData.competitor_scores?.name && (
-                <div className={styles.legendBlock}>
-                  <div className={styles.legendRow}>
-                    <svg width="20" height="2"><line x1="0" y1="1" x2="20" y2="1" stroke="#7C5CBF" strokeWidth="2"/></svg>
-                    <span className={styles.legendText}>{intakeData.brandName || 'Your Brand'}</span>
-                  </div>
-                  <div className={styles.legendRow}>
-                    <svg width="20" height="2"><line x1="0" y1="1" x2="20" y2="1" stroke="#E8622A" strokeWidth="1.5" strokeDasharray="4 4"/></svg>
-                    <span className={styles.legendText}>
-                      {getBrandDisplayName(scoreData.competitor_scores.name)}
-                    </span>
-                  </div>
-                  <p className={styles.legendNote}>Chart accuracy improves with more data sources.</p>
-                </div>
-              )}
-
-            </div>
-          </div>
-
-          {/* Part B: Dimension carousel */}
-          <div className={styles.dimPartB}>
-            <div className={styles.carouselHeader}>
-              <div>
-                <h2 className={styles.sectionTitleSm}>Dimension breakdown</h2>
-                <p className={styles.sectionSubSm}>Swipe to explore each dimension →</p>
-              </div>
-              <div className={styles.carouselArrows}>
-                <button
-                  className={styles.arrowBtn}
-                  onClick={() => carouselRef.current?.scrollBy({ left: -436, behavior: 'smooth' })}
-                  disabled={activeCard === 0}
-                >
-                  <ChevronLeft size={16} />
-                </button>
-                <button
-                  className={styles.arrowBtn}
-                  onClick={() => carouselRef.current?.scrollBy({ left: 436, behavior: 'smooth' })}
-                  disabled={activeCard === DIM_CONFIG.length - 1}
-                >
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-            </div>
-
-            <div
-              className={styles.carousel}
-              ref={carouselRef}
-              onScroll={() => {
-                const el = carouselRef.current;
-                if (!el) return;
-                setActiveCard(Math.round(el.scrollLeft / 436));
-              }}
-              onMouseDown={e => {
-                isDragging.current = true;
-                startX.current = e.pageX - carouselRef.current.offsetLeft;
-                scrollLeftRef.current = carouselRef.current.scrollLeft;
-                carouselRef.current.style.cursor = 'grabbing';
-              }}
-              onMouseLeave={() => {
-                isDragging.current = false;
-                if (carouselRef.current) carouselRef.current.style.cursor = 'grab';
-              }}
-              onMouseUp={() => {
-                isDragging.current = false;
-                if (carouselRef.current) carouselRef.current.style.cursor = 'grab';
-              }}
-              onMouseMove={e => {
-                if (!isDragging.current) return;
-                e.preventDefault();
-                const x = e.pageX - carouselRef.current.offsetLeft;
-                const walk = (x - startX.current) * 1.5;
-                carouselRef.current.scrollLeft = scrollLeftRef.current - walk;
-              }}
-            >
-              <div className={styles.carouselTrack}>
-              {DIM_CONFIG.map((dim, i) => {
-                const s = dims[dim.key]?.score ?? overall;
-                const col = scoreColor(s);
-                const Icon = dim.icon;
-                const justification = dims[dim.key]?.justification || '';
-                const evidenceQ    = dims[dim.key]?.evidence_quote || '';
-                const improvement  = dims[dim.key]?.improvement_action || '';
-                const voiceWords   = dim.key === 'tone_voice' ? (dims.tone_voice?.voice_in_3_words || []) : [];
-                const isExpanded   = expandedDim === dim.key;
-
-                return (
-                  <div
-                    key={dim.key}
-                    className={styles.carouselCard}
-                    onClick={() => setExpandedDim(prev => prev === dim.key ? null : dim.key)}
-                  >
-                    <div className={styles.dimSmallHeader}>
-                      <div className={styles.dimSmallLeft}>
-                        <Icon size={14} style={{ color: 'var(--bs-violet)', flexShrink: 0 }} />
-                        <span className={styles.dimSmallName}>{dim.label}</span>
-                        <Tooltip content={FRAMEWORK_TOOLTIPS[dim.key]} />
-                      </div>
-                      <div className={styles.dimSmallRight}>
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: col }}>{s}</span>
-                        {isExpanded
-                          ? <ChevronUp size={13} style={{ color: 'var(--bs-text-tertiary)' }} />
-                          : <ChevronDown size={13} style={{ color: 'var(--bs-text-tertiary)' }} />}
-                      </div>
-                    </div>
-                    <AnimatedBar score={s} color={col} delay={i * 80} />
-
-                    {isExpanded ? (
-                      justification && <p className={styles.dimExpandJust}>{justification}</p>
-                    ) : (
-                      justification && <p className={styles.dimSmallJust}>{getThreeSentences(justification)}</p>
-                    )}
-
-                    {evidenceQ && (
-                      <p className={styles.dimCarouselEvidence}>{evidenceQ}</p>
-                    )}
-
-                    {improvement && (
-                      <span className={styles.improvePill}>
-                        <ArrowUp size={10} style={{ marginRight: 4 }} />
-                        {truncate(improvement, 90)}
-                      </span>
-                    )}
-
-                    {isExpanded && voiceWords.length > 0 && (
-                      <div className={styles.voicePills}>
-                        {voiceWords.map((w, wi) => (
-                          <span key={wi} className={styles.voicePill}>{w}</span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-              </div>{/* end carouselTrack */}
-            </div>{/* end carousel */}
-
-            <div className={styles.carouselDots}>
-              {DIM_CONFIG.map((_, i) => (
-                <span
-                  key={i}
-                  className={`${styles.carouselDot} ${i === activeCard ? styles.carouselDotActive : ''}`}
-                  onClick={() => carouselRef.current?.scrollTo({ left: i * 436, behavior: 'smooth' })}
-                />
-              ))}
-            </div>
-          </div>
-
-        </section>
-
-        {/* ══ 4 — Key Findings ══ */}
-        <section className={styles.sectionSpaced}>
-          <h2 className={styles.sectionTitle}>Key findings</h2>
-          <p className={styles.sectionSub}>The single biggest thing working for you — and against you</p>
-          <div className={styles.findingsGrid}>
-
-            <FadeUp>
-              <div className={`${styles.findingCard} ${styles.findingStrength}`}>
-                <div className={styles.findingBgNum} style={{ color: 'rgba(46,196,160,0.06)' }}>
-                  {highestDimScore}
-                </div>
-                <div className={styles.findingHeader}>
-                  <CheckCircle size={18} style={{ color: 'var(--bs-teal)', flexShrink: 0 }} />
-                  <span style={{ fontFamily: 'var(--font-ui)', fontSize: 14, fontWeight: 500, color: 'var(--bs-teal)' }}>
-                    Biggest Strength
-                  </span>
-                </div>
-                <h3 className={styles.findingTitle}>{scoreData.biggest_strength || '—'}</h3>
-                {evidence[0] && (
-                  <>
-                    <p className={styles.findingDetail}>{evidence[0].observation}</p>
-                    <p className={styles.findingSource}>Source: {evidence[0].source}</p>
-                  </>
-                )}
-              </div>
-            </FadeUp>
-
-            <FadeUp delay={80}>
-              <div className={`${styles.findingCard} ${styles.findingGap}`}>
-                <div className={styles.findingBgNum} style={{ color: 'rgba(232,98,42,0.06)' }}>
-                  {Math.min(...DIM_CONFIG.map(d => dims[d.key]?.score || overall))}
-                </div>
-                <div className={styles.findingHeader}>
-                  <AlertCircle size={18} style={{ color: 'var(--bs-orange)', flexShrink: 0 }} />
-                  <span style={{ fontFamily: 'var(--font-ui)', fontSize: 14, fontWeight: 500, color: 'var(--bs-orange)' }}>
-                    Biggest Gap
-                  </span>
-                </div>
-                <h3 className={styles.findingTitle}>{scoreData.biggest_gap || '—'}</h3>
-                {evidence[1] && (
-                  <>
-                    <p className={styles.findingDetail}>{evidence[1].observation}</p>
-                    <p className={styles.findingSource}>Source: {evidence[1].source}</p>
-                  </>
-                )}
-              </div>
-            </FadeUp>
-
-          </div>
-        </section>
-
-        {/* ══ 5 — Evidence ══ */}
-        <section className={styles.sectionSpaced}>
-          <h2 className={styles.sectionTitle}>The evidence</h2>
-          <p className={styles.sectionSub}>Everything we found, pulled directly from your brand's actual content</p>
-          <EvidenceSection scrapedData={scrapedData} evidenceQuotes={evidence} />
-        </section>
-
-        {/* ══ 6 — CTA ══ */}
-        <section className={styles.ctaSection}>
-          <h2 className={styles.ctaHeading}>Ready to close the gaps?</h2>
-          <p className={styles.ctaSub}>Generate a strategic roadmap tailored to your goals</p>
-          <button className={styles.ctaBtn} onClick={() => handleRoadmapCta('results_bottom')}>
-            Generate Roadmap →
-          </button>
-          <div className={styles.ctaBtnRow}>
-            <button className={styles.ctaSecondaryBtn} onClick={() => window.print()}>
-              <Download size={14} /> Save Report
-            </button>
-            <button className={styles.ctaSecondaryBtn} onClick={handleShare}>
-              <Share2 size={14} /> Share
-            </button>
-          </div>
-        </section>
-
       </div>
 
-      <Toast visible={toastVisible} />
-
-      {/* ── Share modal ── */}
-      {shareModalUrl && (
-        <div className={styles.modalOverlay} onClick={closeShareModal}>
-          <div className={styles.shareModal} onClick={e => e.stopPropagation()}>
-            <div className={styles.shareModalHeader}>
-              <p className={styles.shareModalTitle}>Report link created</p>
-              <button className={styles.shareModalClose} onClick={closeShareModal}>✕</button>
-            </div>
-            <div className={styles.shareModalUrlRow}>
-              <input
-                className={styles.shareModalInput}
-                value={shareModalUrl}
-                readOnly
-                onClick={e => e.target.select()}
-              />
-              <button
-                className={styles.shareModalCopy}
-                onClick={() => {
-                  navigator.clipboard.writeText(shareModalUrl).catch(() => {});
-                  setShareCopied(true);
-                  setTimeout(() => setShareCopied(false), 2000);
-                }}
-              >
-                {shareCopied ? 'Copied ✓' : 'Copy'}
-              </button>
-            </div>
-            <p className={styles.shareModalNote}>
-              This link gives anyone view-only access to this report for 30 days
-            </p>
-          </div>
-        </div>
-      )}
+      {/* ── Floating Action Bar ── */}
+      <div className={styles.floatingBar}>
+        <button className={styles.floatingBtn} onClick={() => window.print()}>
+          <Download size={16} />
+          Save Report
+        </button>
+        <div className={styles.floatingDivider} />
+        <button className={styles.floatingBtn} onClick={handleShare}>
+          <Share2 size={16} />
+          {copied ? 'Copied!' : 'Share'}
+        </button>
+      </div>
     </div>
-  );
-}
-
-export default function Results() {
-  return (
-    <Suspense>
-      <ResultsInner />
-    </Suspense>
   );
 }

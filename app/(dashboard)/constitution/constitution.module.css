@@ -624,6 +624,70 @@
 
 .dashBtn:hover { opacity: 0.9; }
 
+/* ── Save Indicator ─────────────────────────────────────────── */
+.saveIndicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-ui);
+  font-size: 0.6875rem;
+  color: var(--bs-text-tertiary);
+  margin-left: auto;
+  margin-right: 1rem;
+}
+
+.saveDotSpin {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--bs-text-tertiary);
+  border-top-color: transparent;
+  animation: spin 0.7s linear infinite;
+}
+
+.saveDotDone {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--bs-teal);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.buildingText {
+  font-size: 0.875rem;
+  color: var(--bs-text-tertiary);
+  font-style: italic;
+}
+
+.cCardBuilding {
+  opacity: 0.5;
+}
+
+.completionBar {
+  margin-top: 1rem;
+}
+
+.completionTrack {
+  height: 3px;
+  background: var(--surface2);
+  border-radius: 2px;
+  margin-bottom: 0.5rem;
+}
+
+.completionFill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+.completionLabel {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
 /* ── Mobile ──────────────────────────────────────────────────── */
 @media (max-width: 640px) {
   .sectionWrap { padding: 2rem 1.25rem 4rem; }

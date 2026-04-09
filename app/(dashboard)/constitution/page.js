@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import styles from './constitution.module.css';
 
@@ -87,16 +87,46 @@ const CORE_QUESTIONS = [
   },
 ];
 
-// ── Remaining 15 questions stored server-side as daily queue ─────
-// (populated in Supabase constitution_queue after core is complete)
+// ── Profile → Form mapping ────────────────────────────────────────
 
-const INITIAL_ANSWERS = {
-  brand_mission: '',
-  brand_personality_words: [],
-  brand_off_brand_words: [],
-  brand_best_customer: '',
-  brand_5_year_association: '',
-};
+function buildFormFromProfile(profile) {
+  return {
+    brand_mission:            profile?.brand_mission || '',
+    brand_personality_words:  profile?.brand_personality_words || [],
+    brand_off_brand_words:    profile?.brand_off_brand_words || [],
+    brand_best_customer:      profile?.brand_best_customer || '',
+    brand_5_year_association: profile?.brand_5_year_association || '',
+  };
+}
+
+function mapFormToProfile(data) {
+  return {
+    brand_mission:            data.brand_mission || '',
+    brand_personality_words:  data.brand_personality_words || [],
+    brand_off_brand_words:    data.brand_off_brand_words || [],
+    brand_best_customer:      data.brand_best_customer || '',
+    brand_5_year_association: data.brand_5_year_association || '',
+  };
+}
+
+// ── Debounce hook ─────────────────────────────────────────────────
+
+function useDebounce(value, delay = 1500) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+  return debounced;
+}
+
+function formatTimeAgo(date) {
+  const seconds = Math.floor((new Date() - date) / 1000);
+  if (seconds < 10) return 'just now';
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes}m ago`;
+}
 
 // ── Validation ────────────────────────────────────────────────────
 
@@ -106,8 +136,6 @@ function validateQuestion(q, answers) {
     if (!val || val.length < (q.min || 1)) return `Add at least ${q.min || 1} entries`;
   } else if (!val || !String(val).trim()) {
     return 'This field is required';
-  } else if (q.minLength && String(val).trim().length < q.minLength) {
-    return `Please write at least ${q.minLength} characters (${String(val).trim().length} so far)`;
   }
   return null;
 }
@@ -118,7 +146,7 @@ export default function Constitution() {
   const router = useRouter();
   const [screen, setScreen]             = useState('intro');
   const [questionIdx, setQIdx]          = useState(0);
-  const [answers, setAnswers]           = useState(INITIAL_ANSWERS);
+  const [answers, setAnswers]           = useState(buildFormFromProfile(null));
   const [errors, setErrors]             = useState({});
   const [brandName, setBrandName]       = useState('');
   const [saving, setSaving]             = useState(false);
@@ -126,17 +154,21 @@ export default function Constitution() {
   const [genError, setGenError]         = useState('');
   const [constitution, setConstitution] = useState(null);
   const [isMobile, setIsMobile]         = useState(false);
+  const [isSaving, setIsSaving]         = useState(false);
+  const [lastSaved, setLastSaved]       = useState(null);
+  const isFirstRender                   = useRef(true);
 
-  const totalQ = CORE_QUESTIONS.length;  // 5
+  const totalQ = CORE_QUESTIONS.length;
 
+  // ── Load brand name + profile on mount ────────────────────────
   useEffect(() => {
     const brand = JSON.parse(localStorage.getItem('brandshift_brand') || '{}');
     const resolvedBrand = brand.brandName || localStorage.getItem('brandshift_active_brand') || '';
     if (resolvedBrand) setBrandName(resolvedBrand);
 
-    // Clear any stale completion flag so users can always re-enter
     localStorage.removeItem('brandshift_constitution_done');
 
+    // Restore from localStorage first (fast)
     const saved = localStorage.getItem('brandshift_constitution_progress');
     if (saved) {
       try {
@@ -152,26 +184,96 @@ export default function Constitution() {
     return () => window.removeEventListener('resize', check);
   }, []);
 
+  // ── Fetch profile from server and pre-fill form ───────────────
+  useEffect(() => {
+    if (!brandName) return;
+
+    async function fetchProfile() {
+      try {
+        const res = await fetch(`/api/profile?brandName=${encodeURIComponent(brandName)}`);
+        if (!res.ok) return;
+        const profile = await res.json();
+
+        console.log('Constitution page mounted');
+        console.log('Profile data:', {
+          brand_personality_words: profile?.brand_personality_words,
+          brand_off_brand_words:   profile?.brand_off_brand_words,
+          brand_best_customer:     profile?.brand_best_customer,
+          brand_refuses_to:        profile?.brand_refuses_to,
+          brand_5_year_association: profile?.brand_5_year_association,
+          constitution_completed:  profile?.constitution_completed,
+        });
+
+        const profileForm = buildFormFromProfile(profile);
+        // Only pre-fill if profile has real data
+        const hasProfileData = profileForm.brand_personality_words.length > 0 ||
+          profileForm.brand_best_customer.length > 10 ||
+          profileForm.brand_mission.length > 3;
+
+        if (hasProfileData) {
+          setAnswers(profileForm);
+          console.log('Form pre-filled from profile');
+        }
+      } catch (err) {
+        console.error('Profile fetch failed:', err);
+      }
+    }
+
+    fetchProfile();
+  }, [brandName]);
+
+  // ── Auto-save (debounced) ─────────────────────────────────────
+  const debouncedAnswers = useDebounce(answers, 1500);
+
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
+    const hasContent =
+      debouncedAnswers.brand_personality_words?.length > 0 ||
+      debouncedAnswers.brand_best_customer?.length > 10 ||
+      debouncedAnswers.brand_off_brand_words?.length > 0;
+
+    if (!hasContent) return;
+
+    autoSave(debouncedAnswers);
+  }, [debouncedAnswers]);
+
+  async function autoSave(data) {
+    if (!brandName) return;
+    setIsSaving(true);
+    try {
+      // Save to localStorage
+      localStorage.setItem('brandshift_constitution_progress', JSON.stringify({ answers: data, qIdx: questionIdx }));
+
+      // Save to server
+      const response = await fetch('/api/constitution/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brandName, updates: mapFormToProfile(data) }),
+      });
+
+      if (response.ok) {
+        setLastSaved(new Date());
+        console.log('Constitution auto-saved');
+      }
+    } catch (err) {
+      console.error('Auto-save failed:', err);
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   function setAnswer(field, value) {
     setAnswers(prev => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors(prev => { const e = { ...prev }; delete e[field]; return e; });
   }
 
-  async function persistProgress(qIdx) {
-    localStorage.setItem('brandshift_constitution_progress', JSON.stringify({ answers, qIdx }));
-    if (!brandName) return;
-    try {
-      await fetch('/api/constitution/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ brandName, updates: answers }),
-      });
-    } catch (e) { console.error('Save error:', e.message); }
-  }
-
   async function handleSaveLater() {
     setSaving(true);
-    await persistProgress(questionIdx);
+    await autoSave(answers);
     setSaving(false);
     setSaveMsg('Progress saved!');
     setTimeout(() => setSaveMsg(''), 3000);
@@ -194,7 +296,6 @@ export default function Constitution() {
   async function handleNext() {
     const q = CORE_QUESTIONS[questionIdx];
 
-    // Mobile: one question at a time
     if (isMobile) {
       const err = validateQuestion(q, answers);
       if (err) { setErrors({ [q.field]: err }); return; }
@@ -204,10 +305,8 @@ export default function Constitution() {
         setQIdx(questionIdx + 1);
         return;
       }
-      // Mobile last question: fall through to submit
     }
 
-    // Desktop (all questions shown at once) or mobile on last question: validate all and submit
     const allErrors = {};
     for (const cq of CORE_QUESTIONS) {
       const e = validateQuestion(cq, answers);
@@ -215,7 +314,9 @@ export default function Constitution() {
     }
     if (Object.keys(allErrors).length) { setErrors(allErrors); return; }
 
-    await persistProgress(totalQ - 1);
+    // Save before generating
+    await autoSave(answers);
+
     setScreen('loading');
 
     try {
@@ -232,9 +333,7 @@ export default function Constitution() {
       setConstitution(data);
       localStorage.setItem('brandshift_constitution_done', 'true');
       localStorage.removeItem('brandshift_constitution_progress');
-      if (data._partial) {
-        setGenError('partial');
-      }
+      if (data._partial) setGenError('partial');
       setScreen('result');
     } catch (e) {
       const msg = e.message || '';
@@ -251,62 +350,33 @@ export default function Constitution() {
     }
   }
 
-  function handleBack() {
+  async function handleBack() {
+    await autoSave(answers);
     if (questionIdx > 0) { setQIdx(questionIdx - 1); setErrors({}); }
     else { setScreen('intro'); setErrors({}); }
   }
 
-  // (progress displayed on result screen after generation)
-
-  function renderQuestion(q, showAll = false) {
-    const val   = answers[q.field];
-    const err   = errors[q.field];
-    const isVisible = showAll || isMobile
-      ? CORE_QUESTIONS.indexOf(q) === questionIdx
-      : true;
-
-    if (!isVisible) return null;
-
+  // ── Save indicator ────────────────────────────────────────────
+  function SaveIndicator() {
+    if (!isSaving && !lastSaved) return null;
     return (
-      <div key={q.field} className={styles.qBlock}>
-        {isMobile && (
-          <p className={styles.mobileQNum}>Question {questionIdx + 1} of {totalQ}</p>
-        )}
-        <label className={styles.qLabel}>{q.label}</label>
-
-        {q.type === 'textarea' && (
-          <textarea
-            className={`${styles.qTextarea} ${err ? styles.hasErr : ''}`}
-            value={val}
-            onChange={e => setAnswer(q.field, e.target.value)}
-            placeholder={q.placeholder}
-            rows={5}
-          />
-        )}
-        {q.type === 'text' && (
-          <input
-            type="text"
-            className={`${styles.qInput} ${err ? styles.hasErr : ''}`}
-            value={val}
-            onChange={e => setAnswer(q.field, e.target.value)}
-            placeholder={q.placeholder}
-          />
-        )}
-        {q.type === 'tags' && (
-          <TagInput
-            value={val}
-            onChange={v => setAnswer(q.field, v)}
-            min={q.min}
-            max={q.max}
-            placeholder={q.placeholder}
-          />
-        )}
-        {err && <p className={styles.errMsg}>{err}</p>}
+      <div className={styles.saveIndicator}>
+        {isSaving ? (
+          <>
+            <span className={styles.saveDotSpin} />
+            Saving...
+          </>
+        ) : lastSaved ? (
+          <>
+            <span className={styles.saveDotDone} />
+            Saved {formatTimeAgo(lastSaved)}
+          </>
+        ) : null}
       </div>
     );
   }
 
-  // ── Intro ─────────────────────────────────────────────────────────
+  // ── Intro ─────────────────────────────────────────────────────
 
   if (screen === 'intro') return (
     <div className={styles.page}>
@@ -337,7 +407,7 @@ export default function Constitution() {
     </div>
   );
 
-  // ── Loading ───────────────────────────────────────────────────────
+  // ── Loading ───────────────────────────────────────────────────
 
   if (screen === 'loading') return (
     <div className={styles.page}>
@@ -349,7 +419,7 @@ export default function Constitution() {
     </div>
   );
 
-  // ── Result ────────────────────────────────────────────────────────
+  // ── Result ────────────────────────────────────────────────────
 
   if (screen === 'result' && constitution) return (
     <div className={styles.page}>
@@ -363,12 +433,6 @@ export default function Constitution() {
           <p className={styles.resultDate}>
             Generated {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
-          <div className={styles.completionBar}>
-            <div className={styles.completionTrack}>
-              <div className={styles.completionFill} style={{ width: `${(5 / 20) * 100}%` }} />
-            </div>
-            <span className={styles.completionLabel}>Brand Constitution: 5/20 questions complete · 15 more unlock daily</span>
-          </div>
         </div>
 
         {[
@@ -439,9 +503,8 @@ export default function Constitution() {
     </div>
   );
 
-  // ── Section screen ────────────────────────────────────────────────
+  // ── Section screen ────────────────────────────────────────────
 
-  const currentQ     = CORE_QUESTIONS[questionIdx];
   const isLastQ      = questionIdx === totalQ - 1;
   const qProgressPct = ((questionIdx) / totalQ) * 100;
 
@@ -449,6 +512,7 @@ export default function Constitution() {
     <div className={styles.page}>
       <header className={styles.header}>
         <span className={styles.logo}>BrandShift</span>
+        <SaveIndicator />
         <span className={styles.timeLeft}>Core Constitution · 5 min</span>
         <button className={styles.skipLink} onClick={handleSkip}>Complete later →</button>
       </header>
@@ -464,7 +528,43 @@ export default function Constitution() {
 
         <div className={styles.questions}>
           {isMobile
-            ? renderQuestion(currentQ)
+            ? (() => {
+                const q = CORE_QUESTIONS[questionIdx];
+                return (
+                  <div key={q.field} className={styles.qBlock}>
+                    <p className={styles.mobileQNum}>Question {questionIdx + 1} of {totalQ}</p>
+                    <label className={styles.qLabel}>{q.label}</label>
+                    {q.type === 'textarea' && (
+                      <textarea
+                        className={`${styles.qTextarea} ${errors[q.field] ? styles.hasErr : ''}`}
+                        value={answers[q.field]}
+                        onChange={e => setAnswer(q.field, e.target.value)}
+                        placeholder={q.placeholder}
+                        rows={5}
+                      />
+                    )}
+                    {q.type === 'text' && (
+                      <input
+                        type="text"
+                        className={`${styles.qInput} ${errors[q.field] ? styles.hasErr : ''}`}
+                        value={answers[q.field]}
+                        onChange={e => setAnswer(q.field, e.target.value)}
+                        placeholder={q.placeholder}
+                      />
+                    )}
+                    {q.type === 'tags' && (
+                      <TagInput
+                        value={answers[q.field]}
+                        onChange={v => setAnswer(q.field, v)}
+                        min={q.min}
+                        max={q.max}
+                        placeholder={q.placeholder}
+                      />
+                    )}
+                    {errors[q.field] && <p className={styles.errMsg}>{errors[q.field]}</p>}
+                  </div>
+                );
+              })()
             : CORE_QUESTIONS.map((q) => (
                 <div key={q.field} className={styles.qBlock}>
                   <label className={styles.qLabel}>{q.label}</label>
@@ -515,13 +615,12 @@ export default function Constitution() {
             return { title: 'Something went wrong', message: 'Unable to generate your constitution. Please try again.', action: 'Try again' };
           })();
           return (
-            <div style={{ background: 'rgba(232,160,48,0.08)', border: '1px solid rgba(232,160,48,0.25)', borderRadius: 'var(--radius)', padding: '16px 20px', marginBottom: 16 }}>
+            <div className={styles.sectionErr}>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                <span style={{ fontSize: 18 }}>⚠️</span>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontFamily: 'var(--font-ui)', fontSize: 14, fontWeight: 500, color: 'var(--bs-amber)', marginBottom: 4 }}>{friendly.title}</div>
-                  <div style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: 'var(--bs-text-secondary)', lineHeight: 1.5, marginBottom: 12 }}>{friendly.message}</div>
-                  <button onClick={() => { setGenError(''); handleNext(); }} style={{ background: 'var(--bs-orange)', color: 'white', border: 'none', borderRadius: 'var(--radius)', padding: '8px 20px', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}>{friendly.action}</button>
+                  <div style={{ fontWeight: 500, color: 'var(--bs-amber)', marginBottom: 4 }}>{friendly.title}</div>
+                  <div style={{ fontSize: 13, color: 'var(--bs-text-secondary)', lineHeight: 1.5, marginBottom: 12 }}>{friendly.message}</div>
+                  <button onClick={() => { setGenError(''); handleNext(); }} style={{ background: 'var(--bs-orange)', color: 'white', border: 'none', borderRadius: 'var(--radius)', padding: '8px 20px', fontSize: 13, cursor: 'pointer' }}>{friendly.action}</button>
                 </div>
               </div>
             </div>
