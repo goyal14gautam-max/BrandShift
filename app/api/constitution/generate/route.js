@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { callClaude } from '@/lib/claudeClient';
+import { callClaudeJSON } from '@/lib/claudeClient';
 import { getBrandProfile, updateBrandProfile } from '@/lib/supabase';
 
 // The 15 questions delivered via daily pulse
@@ -21,12 +21,22 @@ const DAILY_QUEUE = [
   { field: 'brand_irreplaceability',  label: 'If your brand disappeared tomorrow, what would your best customers genuinely miss?' },
 ];
 
-function extractJSON(text) {
-  try { return JSON.parse(text); } catch {}
-  const match = text.match(/\{[\s\S]*\}/);
-  if (match) { try { return JSON.parse(match[0]); } catch {} }
-  return null;
-}
+const SYSTEM_PROMPT = `You are a brand strategist generating a Brand Constitution document.
+
+CRITICAL RULES:
+1. You MUST respond with ONLY valid JSON
+2. Do NOT include any text before or after the JSON
+3. Do NOT use markdown code fences
+4. Do NOT explain your response
+5. Do NOT apologise or add commentary
+6. Start your response with { and end with }
+7. If you cannot complete any field, use an empty string "" — never null
+8. Every string value must be in double quotes
+9. Every array must use square brackets
+
+Write with conviction for sections that have data. Return exactly "Building..." (the string) for any section lacking sufficient data — never invent or guess answers.
+
+Your entire response must be parseable by JSON.parse() with no preprocessing.`;
 
 function val(v) {
   if (Array.isArray(v)) return v.length ? v.join(', ') : null;
@@ -55,7 +65,6 @@ export async function POST(request) {
   const core = coreAnswers || {};
   const voice = profile.brand_voice_examples?.[0] || {};
 
-  // Build prompt — mark fields as "Building..." if not yet answered
   const field = (label, value) =>
     `${label}: ${value ?? '[Not yet answered — write "Building..." for this section]'}`;
 
@@ -82,39 +91,54 @@ ${field('Admired brand', val(profile.brand_admired_brand))}
 ${field('Competitive edge', val(profile.brand_competitive_edge))}
 ${field('Irreplaceability', val(profile.brand_irreplaceability))}
 
-Return ONLY this JSON, no other text:
+RESPOND WITH ONLY THIS JSON STRUCTURE. NO OTHER TEXT. START WITH { END WITH }:
 {
-  "who_we_are": "2-3 sentences from mission + origin, or 'Building...' if insufficient data",
+  "who_we_are": "2-3 sentences from mission + origin, or Building...",
   "our_personality": {
-    "words": ["the 5 personality words, or empty array if not answered"],
-    "description": "brand as a person paragraph, or 'Building...'"
+    "words": ["the 5 personality words, or empty array"],
+    "description": "brand as a person paragraph, or Building..."
   },
   "how_we_speak": {
-    "rules": ["3-5 voice rules from examples and phrases, or ['Building...'] if insufficient"],
-    "example_good": "on-brand example or 'Building...'",
-    "example_bad": "off-brand example or 'Building...'"
+    "rules": ["3-5 voice rules from examples and phrases"],
+    "example_good": "on-brand example or Building...",
+    "example_bad": "off-brand example or Building..."
   },
-  "who_we_are_for": "2-3 sentences about the real customer, or 'Building...'",
-  "what_we_will_never_do": ["3-4 never statements from refuses_to + not_for, or ['Building...']"],
-  "where_we_are_going": "2-3 sentences on vision, or 'Building...'"
+  "who_we_are_for": "2-3 sentences about the real customer, or Building...",
+  "what_we_will_never_do": ["3-4 never statements from refuses_to + not_for"],
+  "where_we_are_going": "2-3 sentences on vision, or Building..."
 }`;
 
-  let response;
+  let parsed;
   try {
-    response = await callClaude({
+    parsed = await callClaudeJSON({
       model: 'claude-sonnet-4-6',
       max_tokens: 2000,
-      system: `You are a brand strategist synthesising a Brand Constitution from partial brand answers. Write with conviction for sections that have data. Return exactly "Building..." (the string) for any section lacking sufficient data — never invent or guess answers.`,
+      temperature: 0.3,
+      system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userPrompt }],
-    });
+    }, 3);
   } catch (err) {
-    console.error('[constitution/generate] Anthropic API error:', err.message);
-    return NextResponse.json({ error: 'AI generation failed: ' + err.message }, { status: 500 });
-  }
+    console.error('[constitution/generate] All attempts failed:', err.message);
 
-  const text = response.content.find(b => b.type === 'text')?.text || '';
-  const parsed = extractJSON(text);
-  if (!parsed) return NextResponse.json({ error: 'Failed to parse constitution response' }, { status: 500 });
+    // Fallback: build partial constitution from user inputs
+    parsed = {
+      who_we_are: val(core.brand_mission ?? profile.brand_mission) || 'Building...',
+      our_personality: {
+        words: core.brand_personality_words ?? profile.brand_personality_words ?? [],
+        description: 'Building...',
+      },
+      how_we_speak: {
+        rules: ['Building...'],
+        example_good: val(voice.good) || 'Building...',
+        example_bad: val(voice.bad) || 'Building...',
+      },
+      who_we_are_for: val(core.brand_best_customer ?? profile.brand_best_customer) || 'Building...',
+      what_we_will_never_do: ['Building...'],
+      where_we_are_going: val(core.brand_5_year_association ?? profile.brand_5_year_association) || 'Building...',
+      _partial: true,
+    };
+    console.log('[constitution/generate] Using fallback partial constitution');
+  }
 
   try {
     await updateBrandProfile(brandName, {

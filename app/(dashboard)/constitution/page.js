@@ -232,9 +232,21 @@ export default function Constitution() {
       setConstitution(data);
       localStorage.setItem('brandshift_constitution_done', 'true');
       localStorage.removeItem('brandshift_constitution_progress');
+      if (data._partial) {
+        setGenError('partial');
+      }
       setScreen('result');
     } catch (e) {
-      setGenError(e.message);
+      const msg = e.message || '';
+      if (msg.includes('JSON') || msg.includes('token') || msg.includes('parse')) {
+        setGenError('AI returned an unexpected format. Retrying...');
+      } else if (msg.includes('overloaded') || msg.includes('529')) {
+        setGenError('AI is busy. Retrying automatically...');
+      } else if (msg.includes('timeout')) {
+        setGenError('Request timed out. Please try again.');
+      } else {
+        setGenError('Generation failed. Please try again.');
+      }
       setScreen('section');
     }
   }
