@@ -160,6 +160,7 @@ export default function Audit() {
         ...prev,
         websiteUrl:      normalizeUrl(prev.websiteUrl.trim()),
         instagramHandle: stripAt(prev.instagramHandle.trim()),
+        linkedinPage:    prev.linkedinPage?.trim() ? normalizeUrl(prev.linkedinPage.trim()) : '',
       }));
     }
 

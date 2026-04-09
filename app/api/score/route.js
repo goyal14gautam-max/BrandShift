@@ -59,6 +59,7 @@ export async function POST(request) {
   const {
     brandName, industry, brandAge, targetAudience, challenge,
     scraped_homepage, scraped_about, scraped_blog, scraped_instagram,
+    scraped_linkedin,
     comp1Name, scraped_comp1, comp2Name, scraped_comp2,
   } = body;
 
@@ -68,10 +69,11 @@ export async function POST(request) {
     brand_age: brandAge,
     target_audience: targetAudience,
     challenge,
-    scraped_homepage: scraped_homepage || 'No data',
-    scraped_about:    scraped_about    || 'No data',
-    scraped_blog:     scraped_blog     || 'No data',
+    scraped_homepage:  scraped_homepage  || 'No data',
+    scraped_about:     scraped_about     || 'No data',
+    scraped_blog:      scraped_blog      || 'No data',
     scraped_instagram: scraped_instagram || 'No data',
+    scraped_linkedin:  scraped_linkedin  || 'Not provided',
     comp1_name:  comp1Name  || 'Competitor 1',
     scraped_comp1: scraped_comp1 || 'No data',
     comp2_name:  comp2Name  || 'Competitor 2',

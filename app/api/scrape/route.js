@@ -247,18 +247,71 @@ Brand Personality: ${parsed.brand_personality}
   }
 }
 
+// ── LinkedIn scraping ────────────────────────────────────────────
+async function scrapeLinkedIn(url) {
+  if (!url || url.trim() === '') return '';
+  try {
+    let cleanUrl = url.trim();
+    if (!cleanUrl.startsWith('http')) cleanUrl = 'https://' + cleanUrl;
+    cleanUrl = cleanUrl.replace(/\/$/, '');
+    console.log('Scraping LinkedIn:', cleanUrl);
+
+    const result = await firecrawl.scrapeUrl(cleanUrl, { formats: ['markdown'] });
+    const content = result?.markdown || result?.data?.markdown || '';
+    if (!content || content.length < 50) {
+      console.log('LinkedIn: insufficient content');
+      return '';
+    }
+
+    const cleaned = extractLinkedInData(content, cleanUrl);
+    console.log('LinkedIn scraped:', { length: cleaned.length, preview: cleaned.slice(0, 100) });
+    return cleaned.slice(0, 3000);
+  } catch (err) {
+    console.error('LinkedIn scrape failed:', err.message);
+    return '';
+  }
+}
+
+function extractLinkedInData(content, url) {
+  const lines = content.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  const companySlug = url.split('/company/')[1]?.replace(/\/$/, '')?.split('/')[0] || '';
+  const followerLine = lines.find(l => l.toLowerCase().includes('follower'));
+  const aboutIndex = lines.findIndex(l => l.toLowerCase() === 'about' || l.toLowerCase().includes('overview'));
+  const aboutText = aboutIndex >= 0
+    ? lines.slice(aboutIndex + 1, aboutIndex + 6).filter(l => l.length > 20).join(' ')
+    : '';
+  const postLines = lines.filter(l =>
+    l.length > 30 && l.length < 300 && !l.includes('http') && !l.startsWith('#') &&
+    !l.toLowerCase().includes('follow') && !l.toLowerCase().includes('connect') &&
+    !l.toLowerCase().includes('notification')
+  ).slice(0, 5);
+
+  const parts = ['LINKEDIN COMPANY PAGE:', `Company: ${companySlug}`, `URL: ${url}`];
+  if (followerLine) parts.push(`Followers: ${followerLine}`);
+  if (aboutText) parts.push('', 'ABOUT:', aboutText);
+  if (postLines.length > 0) parts.push('', 'RECENT CONTENT:', ...postLines.map((l, i) => `Post ${i + 1}: ${l}`));
+  return parts.join('\n');
+}
+
+function extractLinkedInFollowers(content) {
+  if (!content) return null;
+  const match = content.match(/(\d[\d,]+)\s*followers?/i);
+  if (!match) return null;
+  return parseInt(match[1].replace(/,/g, ''));
+}
+
 // ── POST handler ─────────────────────────────────────────────────
 export async function POST(request) {
   try {
   const body = await request.json();
-  const { websiteUrl, instagramHandle, comp1Url, comp2Url } = body;
+  const { websiteUrl, instagramHandle, linkedinUrl, comp1Url, comp2Url } = body;
 
   // Clean all URLs — strip paths/params, keep only hostname
   const cleanWebsiteUrl = extractHomepageUrl(websiteUrl || '');
   const cleanComp1Url   = extractHomepageUrl(comp1Url || '');
   const cleanComp2Url   = extractHomepageUrl(comp2Url || '');
 
-  console.log('Scrape route called with:', { websiteUrl, instagramHandle, comp1Url, comp2Url });
+  console.log('Scrape route called with:', { websiteUrl, instagramHandle, linkedinUrl, comp1Url, comp2Url });
   console.log('URLs after cleaning:', { cleanWebsiteUrl, cleanComp1Url, cleanComp2Url });
   console.log('Competitor URLs after cleaning:', { comp1: cleanComp1Url, comp2: cleanComp2Url });
 
@@ -275,12 +328,14 @@ export async function POST(request) {
     aboutContent,
     blogContent,
     instagramContent,
+    linkedinContent,
     comp1Result,
     comp2Result,
   ] = await Promise.all([
     withTimeout(scrapeAbout(cleanWebsiteUrl, homepageFingerprint), 10000),
     withTimeout(scrapeBlog(cleanWebsiteUrl, homepageFingerprint),  10000),
     withTimeout(scrapeInstagram(instagramHandle),                   50000),
+    withTimeout(scrapeLinkedIn(linkedinUrl),                         15000),
     withTimeout(scrapeCompetitor(cleanComp1Url), 10000, { content: '', screenshot: '' }),
     withTimeout(scrapeCompetitor(cleanComp2Url), 10000, { content: '', screenshot: '' }),
   ]);
@@ -291,12 +346,14 @@ export async function POST(request) {
   const scrapedComp1     = comp1Result.content;
   const scrapedComp2     = comp2Result.content;
   const scrapedInstagram = cleanMarkdown(instagramContent).slice(0, 3000);
+  const scrapedLinkedIn  = linkedinContent || '';
 
   console.log('=== SCRAPE RESULTS ===');
   console.log('Homepage:',    { length: scrapedHomepage.length,  preview: scrapedHomepage.slice(0, 100)  || 'EMPTY' });
   console.log('About:',       { length: scrapedAbout.length,     preview: scrapedAbout.slice(0, 100)     || 'EMPTY' });
   console.log('Blog:',        { length: scrapedBlog.length,      preview: scrapedBlog.slice(0, 100)      || 'EMPTY' });
   console.log('Instagram:',   { length: scrapedInstagram.length, preview: scrapedInstagram.slice(0, 100) || 'EMPTY' });
+  console.log('LinkedIn:',    { length: scrapedLinkedIn.length,  preview: scrapedLinkedIn.slice(0, 100)  || 'EMPTY' });
   console.log('Competitor 1:',{ length: scrapedComp1.length,     preview: scrapedComp1.slice(0, 100)     || 'EMPTY' });
   console.log('Competitor 2:',{ length: scrapedComp2.length,     preview: scrapedComp2.slice(0, 100)     || 'EMPTY' });
   console.log('=== END SCRAPE RESULTS ===');
@@ -310,10 +367,14 @@ export async function POST(request) {
     scraped_comp1:     scrapedComp1,
     scraped_comp2:     scrapedComp2,
     scraped_instagram: scrapedInstagram + instagramSignals,
+    scraped_linkedin:  scrapedLinkedIn,
     screenshots: {
       homepage: homepageScreenshot,
       comp1:    comp1Result.screenshot,
       comp2:    comp2Result.screenshot,
+    },
+    activityData: {
+      linkedinFollowers: extractLinkedInFollowers(scrapedLinkedIn),
     },
   });
   } catch (err) {

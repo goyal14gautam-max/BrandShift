@@ -32,6 +32,7 @@ export default function Loading() {
   const [activityCards, setActivityCards] = useState([
     { title: 'Homepage Read', subtitle: 'Waiting...', visible: false },
     { title: 'Instagram Scanned', subtitle: 'Waiting...', visible: false },
+    { title: 'LinkedIn Analyzed', subtitle: 'Waiting...', visible: false },
     { title: 'Competitors Benchmarked', subtitle: 'Waiting...', visible: false },
   ]);
 
@@ -113,6 +114,7 @@ export default function Loading() {
         body: JSON.stringify({
           brandName: intake.brandName, websiteUrl: intake.websiteUrl,
           instagramHandle: intake.instagramHandle,
+          linkedinUrl: intake.linkedinPage || '',
           comp1Name: c1.name, comp1Url: c1.url,
           comp2Name: c2.name, comp2Url: c2.url,
         }),
@@ -136,12 +138,18 @@ export default function Loading() {
       }, 800);
 
       setTimeout(() => {
-        completeStep(2); activateStep(3); setProgress(65);
-        const compCount = [scrapeData.scraped_comp1, scrapeData.scraped_comp2].filter(Boolean).length;
-        setActivityCards(prev => { const n = [...prev]; n[2] = { ...n[2], subtitle: `${compCount} brands compared`, visible: true }; return n; });
-      }, 1300);
+        completeStep(2); activateStep(3); setProgress(55);
+        const hasLinkedIn = !!scrapeData.scraped_linkedin;
+        setActivityCards(prev => { const n = [...prev]; n[2] = { ...n[2], subtitle: hasLinkedIn ? 'Company page scraped' : 'Not provided', visible: true }; return n; });
+      }, 1100);
 
-      setTimeout(() => { completeStep(3); activateStep(4); setProgress(80); }, 1800);
+      setTimeout(() => {
+        completeStep(3); activateStep(3); setProgress(65);
+        const compCount = [scrapeData.scraped_comp1, scrapeData.scraped_comp2].filter(Boolean).length;
+        setActivityCards(prev => { const n = [...prev]; n[3] = { ...n[3], subtitle: `${compCount} brands compared`, visible: true }; return n; });
+      }, 1500);
+
+      setTimeout(() => { completeStep(3); activateStep(4); setProgress(80); }, 2000);
 
       const scoreRes = await fetch('/api/score', {
         method: 'POST',
