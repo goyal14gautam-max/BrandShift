@@ -7,6 +7,11 @@ export function useDashboard() {
   const [isLoading, setIsLoading]               = useState(true);
   const [error, setError]                       = useState(null);
   const [isGeneratingBrief, setIsGeneratingBrief] = useState(false);
+  const [refreshKey, setRefreshKey]             = useState(0);
+
+  function refreshProfile() {
+    setRefreshKey(prev => prev + 1);
+  }
 
   useEffect(() => {
     async function loadProfile() {
@@ -59,7 +64,7 @@ export function useDashboard() {
     }
 
     loadProfile();
-  }, []);
+  }, [refreshKey]);
 
   // ── Tool data derived from profile ───────────────────────────
   const todayStr = new Date().toISOString().split('T')[0];
@@ -125,19 +130,53 @@ export function useDashboard() {
 
   const constitutionProgress = (() => {
     if (!profile) return { answered: 0, total: 20 };
-    const fields = [
-      'brand_mission', 'brand_personality_words', 'brand_off_brand_words',
-      'brand_best_customer', 'brand_5_year_association', 'brand_origin_story',
-      'brand_refuses_to', 'brand_person_description', 'brand_party_behaviour',
-      'brand_owned_phrases', 'brand_cringe_phrases', 'brand_customer_belief',
-      'brand_customer_feeling', 'brand_not_for', 'brand_10_year_dream',
-      'brand_admired_brand', 'brand_competitive_edge', 'brand_irreplaceability',
-      'brand_voice_examples', 'brand_voice_examples',
+
+    console.log('Constitution fields check:', {
+      brand_personality_words: profile?.brand_personality_words,
+      brand_off_brand_words:   profile?.brand_off_brand_words,
+      brand_best_customer:     profile?.brand_best_customer,
+      brand_5_year_association: profile?.brand_5_year_association,
+      brand_mission:           profile?.brand_mission,
+      brand_origin_story:      profile?.brand_origin_story,
+      brand_refuses_to:        profile?.brand_refuses_to,
+      brand_person_description: profile?.brand_person_description,
+    });
+
+    const checks = [
+      // Array fields
+      { field: profile.brand_personality_words, isArray: true },
+      { field: profile.brand_off_brand_words,   isArray: true },
+      { field: profile.brand_refuses_to,        isArray: true },
+      { field: profile.brand_owned_phrases,     isArray: true },
+      { field: profile.brand_cringe_phrases,    isArray: true },
+      // Text fields
+      { field: profile.brand_best_customer,      isArray: false },
+      { field: profile.brand_5_year_association, isArray: false },
+      { field: profile.brand_origin_story,       isArray: false },
+      { field: profile.brand_person_description, isArray: false },
+      { field: profile.brand_mission,            isArray: false },
+      { field: profile.brand_customer_belief,    isArray: false },
+      { field: profile.brand_customer_feeling,   isArray: false },
+      { field: profile.brand_not_for,            isArray: false },
+      { field: profile.brand_10_year_dream,      isArray: false },
+      { field: profile.brand_admired_brand,      isArray: false },
+      { field: profile.brand_competitive_edge,   isArray: false },
+      { field: profile.brand_irreplaceability,   isArray: false },
+      { field: profile.brand_on_brand_example,   isArray: false },
+      { field: profile.brand_off_brand_example,  isArray: false },
+      { field: profile.brand_voice_archetype || profile.brand_3_words, isArray: false },
     ];
-    const answered = fields.filter(
-      f => profile[f] && (Array.isArray(profile[f]) ? profile[f].length > 0 : profile[f] !== '')
-    ).length;
-    return { answered, total: 20 };
+
+    const answered = checks.filter(check => {
+      if (check.isArray) {
+        return Array.isArray(check.field) && check.field.length > 0;
+      }
+      return typeof check.field === 'string' && check.field.trim().length > 3;
+    }).length;
+
+    console.log('Constitution progress:', answered, '/', checks.length);
+
+    return { answered, total: checks.length };
   })();
 
   const todayQuestion = profile?.constitution_queue?.[0] || null;
@@ -258,5 +297,6 @@ export function useDashboard() {
     saveConstitutionAnswer,
     markBriefOpened,
     generateBriefNow,
+    refreshProfile,
   };
 }

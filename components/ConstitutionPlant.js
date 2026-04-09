@@ -1,11 +1,11 @@
 'use client';
 
 export default function ConstitutionPlant({ answered, total = 20 }) {
-  const progress = answered / total;
   const stage =
-    progress <= 0.25 ? 'seed' :
-    progress <= 0.5  ? 'sprout' :
-    progress <= 0.75 ? 'plant' : 'tree';
+    answered === 0  ? 'seed' :
+    answered <= 5   ? 'seed' :
+    answered <= 10  ? 'sprout' :
+    answered <= 15  ? 'plant' : 'tree';
 
   const color    = '#2EC4A0';
   const dimColor = 'rgba(46,196,160,0.3)';
@@ -55,7 +55,7 @@ export default function ConstitutionPlant({ answered, total = 20 }) {
         {stage === 'seed'   && 'Just planted'}
         {stage === 'sprout' && 'Taking root'}
         {stage === 'plant'  && 'Growing strong'}
-        {stage === 'tree'   && 'Fully grown'}
+        {stage === 'tree'   && 'Fully grown ✓'}
       </div>
       <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>
         {answered}/{total} answered
