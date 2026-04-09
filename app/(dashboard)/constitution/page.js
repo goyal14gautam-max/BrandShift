@@ -1,606 +1,420 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import styles from './constitution.module.css';
+import { Check, X, Loader } from 'lucide-react';
 
-// ── TagInput ──────────────────────────────────────────────────────
-
-function TagInput({ value = [], onChange, onSave, min = 1, max = 10, placeholder = 'Type and press Enter' }) {
-  const [draft, setDraft] = useState('');
-
-  function addTag(raw) {
-    const tag = raw.trim().replace(/,$/, '');
-    if (!tag || value.includes(tag) || value.length >= max) return;
-    const updated = [...value, tag];
-    onChange(updated);
-    setDraft('');
-    // Trigger immediate save when a tag is added
-    if (onSave) onSave();
-  }
-
-  function removeTag(index) {
-    const updated = value.filter((_, j) => j !== index);
-    onChange(updated);
-    if (onSave) onSave();
-  }
-
-  function onKey(e) {
-    if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTag(draft); }
-    if (e.key === 'Backspace' && !draft && value.length) removeTag(value.length - 1);
-  }
-
-  return (
-    <div className={styles.tagWrap}>
-      <div className={styles.tagBox}>
-        {value.map((t, i) => (
-          <span key={i} className={styles.pill}>
-            {t}
-            <button type="button" onClick={() => removeTag(i)}>×</button>
-          </span>
-        ))}
-        {value.length < max && (
-          <input
-            className={styles.tagInline}
-            value={draft}
-            onChange={e => setDraft(e.target.value)}
-            onKeyDown={onKey}
-            onBlur={() => draft.trim() && addTag(draft)}
-            placeholder={value.length ? 'Add more…' : placeholder}
-          />
-        )}
-      </div>
-      <p className={styles.tagMeta}>
-        Press Enter to add · {value.length < min ? `${min - value.length} more needed` : `${value.length} added`}
-      </p>
-    </div>
-  );
-}
-
-// ── Core 5 questions ──────────────────────────────────────────────
-
-const CORE_QUESTIONS = [
-  { field: 'brand_mission', label: 'Complete this sentence: We exist so that ___________', type: 'text', placeholder: 'our customers never have to feel [X] again' },
-  { field: 'brand_personality_words', label: 'Pick 5 words that describe your brand. Words your best customer would use.', type: 'tags', placeholder: 'e.g. Bold, Warm, Grounded…', min: 5, max: 5 },
-  { field: 'brand_off_brand_words', label: 'Pick 5 words your brand would NEVER be.', type: 'tags', placeholder: 'e.g. Corporate, Flashy, Generic…', min: 5, max: 5 },
-  { field: 'brand_best_customer', label: 'Describe your best customer in one paragraph. Not demographics — their life.', type: 'textarea', placeholder: 'She wakes up at 7, checks Instagram before getting out of bed, has strong opinions about brands that talk down to her…' },
-  { field: 'brand_5_year_association', label: 'In 5 years, when someone mentions your brand, you want people to immediately think of ___________', type: 'text', placeholder: 'One thing. Not three things. One.' },
+const SECTIONS = [
+  {
+    id: 0,
+    title: 'Your Brand Identity',
+    subtitle: 'How your brand thinks and feels',
+    color: 'var(--bs-violet)',
+    questions: [
+      { key: 'personalityWords', type: 'tags', label: 'If your brand were a person, they would be described as...', sublabel: 'Add 3-5 personality words. Press Enter after each.', placeholder: 'e.g. bold, warm, direct...', required: true },
+      { key: 'offBrandWords', type: 'tags', label: 'Words your brand would NEVER want to be called', sublabel: 'These are your hard limits. Press Enter after each.', placeholder: 'e.g. cheap, corporate, boring...', required: true },
+      { key: 'personDescription', type: 'textarea', label: 'If your brand walked into a party, what would they do?', sublabel: 'Describe the behaviour, energy, how they talk.', placeholder: 'They walk in confidently, find the most interesting person in the room...', required: false },
+    ],
+  },
+  {
+    id: 1,
+    title: 'Your Customer',
+    subtitle: 'Who you are really talking to',
+    color: 'var(--bs-teal)',
+    questions: [
+      { key: 'bestCustomer', type: 'textarea', label: 'Describe your best customer in one paragraph. Not demographics — their life.', sublabel: 'What do they want, fear, believe? What is their day like?', placeholder: 'They are someone who has just started earning their own money and...', required: true },
+      { key: 'notFor', type: 'textarea', label: 'Who is your brand NOT for?', sublabel: 'Being specific here sharpens everything else.', placeholder: 'Not for people who want the cheapest option. Not for...', required: false },
+      { key: 'fiveYearVision', type: 'textarea', label: 'In 5 years, when someone mentions your brand, what do you want them to think of?', sublabel: 'Not your product. The feeling, the association.', placeholder: 'The brand that made me feel like I finally found my style...', required: false },
+    ],
+  },
+  {
+    id: 2,
+    title: 'Your Voice',
+    subtitle: 'How your brand communicates',
+    color: 'var(--bs-amber)',
+    questions: [
+      { key: 'ownedPhrases', type: 'tags', label: 'Phrases or words your brand owns — signature language', sublabel: 'Things only your brand would say. Press Enter after each.', placeholder: 'e.g. "built for real life"...', required: false },
+      { key: 'cringePhrases', type: 'tags', label: 'Phrases that make you cringe when you see them in your copy', sublabel: 'Language you want to actively avoid. Press Enter after each.', placeholder: 'e.g. "synergy", "world-class", "seamless"...', required: false },
+      { key: 'originStory', type: 'textarea', label: 'Why does your brand exist? The real reason, not the PR version.', sublabel: 'What problem made you start this?', placeholder: 'We started because we were frustrated that...', required: false },
+    ],
+  },
+  {
+    id: 3,
+    title: 'Your Edge',
+    subtitle: 'What makes you different',
+    color: 'var(--bs-orange)',
+    questions: [
+      { key: 'refusesTo', type: 'tags', label: 'Things your brand absolutely refuses to do', sublabel: 'Hard nos. Press Enter after each.', placeholder: 'e.g. use fear-based marketing, make false claims...', required: false },
+      { key: 'competitiveEdge', type: 'textarea', label: 'What do you do that your competitors cannot easily copy?', sublabel: 'Your real unfair advantage.', placeholder: 'Unlike others we...', required: false },
+      { key: 'mission', type: 'textarea', label: 'Complete this: We exist to ___', sublabel: 'One clear sentence. No jargon.', placeholder: 'We exist to...', required: false },
+    ],
+  },
 ];
 
-// ── Helpers ───────────────────────────────────────────────────────
-
-function buildFormFromProfile(profile) {
-  return {
-    brand_mission:            profile?.brand_mission || '',
-    brand_personality_words:  profile?.brand_personality_words || [],
-    brand_off_brand_words:    profile?.brand_off_brand_words || [],
-    brand_best_customer:      profile?.brand_best_customer || '',
-    brand_5_year_association: profile?.brand_5_year_association || '',
-  };
+function colorValue(cssVar) {
+  if (cssVar === 'var(--bs-violet)') return '#7C5CBF';
+  if (cssVar === 'var(--bs-teal)') return '#2EC4A0';
+  if (cssVar === 'var(--bs-amber)') return '#E8A030';
+  if (cssVar === 'var(--bs-orange)') return '#E8622A';
+  return '#7C5CBF';
 }
 
-function mapFormToProfile(data) {
-  return {
-    brand_mission:            data.brand_mission || '',
-    brand_personality_words:  data.brand_personality_words || [],
-    brand_off_brand_words:    data.brand_off_brand_words || [],
-    brand_best_customer:      data.brand_best_customer || '',
-    brand_5_year_association: data.brand_5_year_association || '',
-  };
-}
-
-function hasExistingData(profile) {
-  if (!profile) return false;
-  const textFields = [profile.brand_best_customer, profile.brand_5_year_association, profile.brand_mission];
-  const arrayFields = [profile.brand_personality_words, profile.brand_off_brand_words];
-  const hasText = textFields.some(f => f && f.trim().length > 3);
-  const hasArrays = arrayFields.some(f => Array.isArray(f) && f.length > 0);
-  return hasText || hasArrays;
-}
-
-function formatTimeAgo(date) {
-  const seconds = Math.floor((new Date() - date) / 1000);
-  if (seconds < 10) return 'just now';
-  if (seconds < 60) return `${seconds}s ago`;
-  return `${Math.floor(seconds / 60)}m ago`;
-}
-
-function validateQuestion(q, answers) {
-  const val = answers[q.field];
-  if (q.type === 'tags') {
-    if (!val || val.length < (q.min || 1)) return `Add at least ${q.min || 1} entries`;
-  } else if (!val || !String(val).trim()) {
-    return 'This field is required';
-  }
-  return null;
-}
-
-// ── Main component ────────────────────────────────────────────────
-
-export default function Constitution() {
+export default function ConstitutionPage() {
   const router = useRouter();
-  const [screen, setScreen]             = useState('loading-profile'); // start with loading, not intro
-  const [questionIdx, setQIdx]          = useState(0);
-  const [answers, setAnswers]           = useState(buildFormFromProfile(null));
-  const [errors, setErrors]             = useState({});
-  const [brandName, setBrandName]       = useState('');
-  const [saving, setSaving]             = useState(false);
-  const [saveMsg, setSaveMsg]           = useState('');
-  const [genError, setGenError]         = useState('');
-  const [constitution, setConstitution] = useState(null);
-  const [isMobile, setIsMobile]         = useState(false);
+  const [isLoading, setIsLoading]       = useState(true);
   const [isSaving, setIsSaving]         = useState(false);
-  const [lastSaved, setLastSaved]       = useState(null);
-  const [toastMsg, setToastMsg]         = useState('');
-  const isFirstRender                   = useRef(true);
-  const saveTimeoutRef                  = useRef(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [saveError, setSaveError]       = useState('');
+  const [currentStep, setCurrentStep]   = useState(0);
+  const [isComplete, setIsComplete]     = useState(false);
+  const [bibleContent, setBibleContent] = useState('');
+  const [tagInput, setTagInput]         = useState({});
+  const [brandName, setBrandName]       = useState('');
 
-  const totalQ = CORE_QUESTIONS.length;
+  const [answers, setAnswers] = useState({
+    personalityWords: [], offBrandWords: [], personDescription: '',
+    bestCustomer: '', notFor: '', fiveYearVision: '',
+    ownedPhrases: [], cringePhrases: [], originStory: '',
+    refusesTo: [], competitiveEdge: '', mission: '',
+  });
 
-  // ── Resolve brand name on mount ───────────────────────────────
+  // Resolve brand name
   useEffect(() => {
-    const brand = JSON.parse(localStorage.getItem('brandshift_brand') || '{}');
-    const resolved = brand.brandName || localStorage.getItem('brandshift_active_brand') || '';
-    if (resolved) setBrandName(resolved);
-
-    const check = () => setIsMobile(window.innerWidth < 640);
-    check();
-    window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
+    try {
+      const brand = JSON.parse(localStorage.getItem('brandshift_brand') || '{}');
+      const name = brand.brandName || localStorage.getItem('brandshift_active_brand') || '';
+      setBrandName(name);
+    } catch {
+      setBrandName('');
+    }
   }, []);
 
-  // ── Fetch profile from server, pre-fill, decide screen ────────
+  // Load existing answers
   useEffect(() => {
-    if (!brandName) {
-      // No brand = show intro
-      setScreen('intro');
-      return;
-    }
-
-    async function fetchProfile() {
-      try {
-        console.log('=== CONSTITUTION DIAGNOSE ===');
-        console.log('Brand from localStorage:', brandName);
-
-        const res = await fetch(`/api/profile?brandName=${encodeURIComponent(brandName)}`);
-        if (!res.ok) {
-          console.log('Profile fetch failed, status:', res.status);
-          setScreen('intro');
-          return;
-        }
-        const profile = await res.json();
-
-        console.log('Profile constitution fields:', {
-          brand_personality_words: profile?.brand_personality_words,
-          brand_off_brand_words:   profile?.brand_off_brand_words,
-          brand_best_customer:     profile?.brand_best_customer,
-          brand_5_year_association: profile?.brand_5_year_association,
-          brand_mission:           profile?.brand_mission,
-          constitution_completed:  profile?.constitution_completed,
-        });
-
-        // Also run the direct check API
-        try {
-          const checkRes = await fetch(`/api/constitution/check?brand=${encodeURIComponent(brandName)}`);
-          const checkData = await checkRes.json();
-          console.log('Direct Supabase check:', checkData);
-        } catch (e) {
-          console.log('Check API failed:', e.message);
-        }
-
-        console.log('=== END DIAGNOSE ===');
-
-        // Pre-fill form from profile
-        if (hasExistingData(profile)) {
-          setAnswers(buildFormFromProfile(profile));
-          console.log('Form pre-filled from profile — skipping intro');
-          setScreen('section');
-        } else {
-          // Also check localStorage for in-progress answers
-          const saved = localStorage.getItem('brandshift_constitution_progress');
-          if (saved) {
-            try {
-              const { answers: a, qIdx } = JSON.parse(saved);
-              if (a) setAnswers(prev => ({ ...prev, ...a }));
-              if (typeof qIdx === 'number') setQIdx(qIdx);
-              setScreen('section');
-              console.log('Restored from localStorage');
-              return;
-            } catch {}
-          }
-          setScreen('intro');
-        }
-      } catch (err) {
-        console.error('Profile fetch error:', err);
-        setScreen('intro');
-      }
-    }
-
-    fetchProfile();
+    if (!brandName) { setIsLoading(false); return; }
+    loadAnswers();
   }, [brandName]);
 
-  // ── Save function — uses API route (server-side, bypasses RLS) ──
-  async function doSave(data) {
-    const name = brandName || localStorage.getItem('brandshift_active_brand');
-    if (!name) {
-      console.error('No brand name for save');
-      return false;
-    }
-    setIsSaving(true);
-
-    // Always save to localStorage
-    localStorage.setItem('brandshift_constitution_progress', JSON.stringify({ answers: data, qIdx: questionIdx }));
-
+  async function loadAnswers() {
+    setIsLoading(true);
     try {
-      const profileData = mapFormToProfile(data);
-      console.log('Saving constitution for:', name, 'fields:', Object.keys(profileData));
+      console.log('Loading constitution for:', brandName);
+      const res = await fetch(`/api/constitution/load?brand=${encodeURIComponent(brandName)}`);
+      const data = await res.json();
+      console.log('Load response:', data);
 
-      const response = await fetch('/api/constitution/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ brandName: name, updates: profileData }),
-      });
+      if (data.success && data.data) {
+        const d = data.data;
+        const loaded = {
+          personalityWords:  d.c_personality_words || [],
+          offBrandWords:     d.c_off_brand_words || [],
+          personDescription: d.c_person_description || '',
+          bestCustomer:      d.c_best_customer || '',
+          notFor:            d.c_not_for || '',
+          fiveYearVision:    d.c_5_year_vision || '',
+          ownedPhrases:      d.c_owned_phrases || [],
+          cringePhrases:     d.c_cringe_phrases || [],
+          originStory:       d.c_origin_story || '',
+          refusesTo:         d.c_refuses_to || [],
+          competitiveEdge:   d.c_competitive_edge || '',
+          mission:           d.c_mission || '',
+        };
+        console.log('Loaded answers:', loaded);
+        setAnswers(loaded);
 
-      const result = await response.json();
+        if (d.c_current_step > 0) {
+          setCurrentStep(Math.min(d.c_current_step, SECTIONS.length - 1));
+        }
 
-      if (response.ok) {
-        setLastSaved(new Date());
-        showToast('Answers saved');
-        console.log('Constitution saved OK:', result);
-        return true;
-      } else {
-        console.error('Save failed:', result);
-        return false;
+        if (d.c_completed && d.c_bible_content) {
+          setIsComplete(true);
+          setBibleContent(d.c_bible_content);
+        }
       }
     } catch (err) {
+      console.error('Load error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  // Save
+  async function saveStep(stepIndex) {
+    setSaveError('');
+    setIsSaving(true);
+    console.log('Saving step:', stepIndex, 'Brand:', brandName, 'Answers:', answers);
+
+    try {
+      const res = await fetch('/api/constitution/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brandName, step: stepIndex, answers }),
+      });
+      const result = await res.json();
+      console.log('Save result:', result);
+
+      if (!res.ok || !result.success) {
+        setSaveError(result.error || 'Save failed');
+        return false;
+      }
+      return true;
+    } catch (err) {
       console.error('Save error:', err);
+      setSaveError('Could not save. Check your connection.');
       return false;
     } finally {
       setIsSaving(false);
     }
   }
 
-  // Debounced save — called after every field change
-  function scheduleSave(data) {
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(() => doSave(data), 1500);
-  }
-
-  // Immediate save — called on blur, tag add, navigation
-  async function immediateSave() {
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    await doSave(answers);
-  }
-
-  function showToast(msg) {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(''), 2000);
-  }
-
-  function setAnswer(field, value) {
-    const updated = { ...answers, [field]: value };
-    setAnswers(updated);
-    if (errors[field]) setErrors(prev => { const e = { ...prev }; delete e[field]; return e; });
-    // Schedule debounced save
-    if (!isFirstRender.current) scheduleSave(updated);
-  }
-
-  // ── Navigation handlers ───────────────────────────────────────
-
-  async function handleSaveLater() {
-    setSaving(true);
-    await doSave(answers);
-    setSaving(false);
-    setSaveMsg('Progress saved!');
-    setTimeout(() => setSaveMsg(''), 3000);
-  }
-
-  async function handleSkip() {
-    localStorage.setItem('brandshift_constitution_done', 'skipped');
-    if (brandName) {
-      try {
-        await fetch('/api/constitution/save', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ brandName, updates: { constitution_completed: false } }),
-        });
-      } catch {}
-    }
-    router.push('/dashboard');
-  }
-
+  // Navigation
   async function handleNext() {
-    const q = CORE_QUESTIONS[questionIdx];
+    const section = SECTIONS[currentStep];
+    const missing = section.questions
+      .filter(q => q.required)
+      .find(q => {
+        const val = answers[q.key];
+        return Array.isArray(val) ? val.length === 0 : !val || val.trim().length < 3;
+      });
 
-    if (isMobile) {
-      const err = validateQuestion(q, answers);
-      if (err) { setErrors({ [q.field]: err }); return; }
-      setErrors({});
-      if (questionIdx < totalQ - 1) {
-        await immediateSave();
-        setQIdx(questionIdx + 1);
+    if (missing) {
+      setSaveError(`Please answer: "${missing.label.slice(0, 50)}..."`);
+      return;
+    }
+
+    const saved = await saveStep(currentStep + 1);
+    if (!saved) return;
+
+    if (currentStep < SECTIONS.length - 1) {
+      setCurrentStep(prev => prev + 1);
+      window.scrollTo(0, 0);
+    } else {
+      await generateBible();
+    }
+  }
+
+  function handleBack() {
+    if (currentStep > 0) {
+      setCurrentStep(prev => prev - 1);
+      window.scrollTo(0, 0);
+    }
+  }
+
+  // Generate
+  async function generateBible() {
+    setIsGenerating(true);
+    setSaveError('');
+    try {
+      const res = await fetch('/api/constitution/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brandName }),
+      });
+      const result = await res.json();
+      console.log('Generate result:', result);
+
+      if (!res.ok || !result.success) {
+        setSaveError(result.error || 'Generation failed. Your answers are saved. Try again.');
         return;
       }
-    }
-
-    const allErrors = {};
-    for (const cq of CORE_QUESTIONS) {
-      const e = validateQuestion(cq, answers);
-      if (e) allErrors[cq.field] = e;
-    }
-    if (Object.keys(allErrors).length) { setErrors(allErrors); return; }
-
-    // Save before generating
-    await doSave(answers);
-    setScreen('generating');
-
-    try {
-      const [res] = await Promise.all([
-        fetch('/api/constitution/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ brandName, coreAnswers: answers }),
-        }),
-        new Promise(r => setTimeout(r, 3000)),
-      ]);
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      setConstitution(data);
-      localStorage.setItem('brandshift_constitution_done', 'true');
-      localStorage.removeItem('brandshift_constitution_progress');
-      if (data._partial) setGenError('partial');
-      setScreen('result');
-    } catch (e) {
-      const msg = e.message || '';
-      if (msg.includes('overloaded') || msg.includes('529')) setGenError('AI is busy. Retrying automatically...');
-      else if (msg.includes('timeout')) setGenError('Request timed out. Please try again.');
-      else setGenError('Generation failed. Please try again.');
-      setScreen('section');
+      setBibleContent(result.bibleContent);
+      setIsComplete(true);
+      window.scrollTo(0, 0);
+    } catch (err) {
+      console.error('Generate error:', err);
+      setSaveError('Generation failed. Your answers are saved safely. Please try again.');
+    } finally {
+      setIsGenerating(false);
     }
   }
 
-  async function handleBack() {
-    await immediateSave();
-    if (questionIdx > 0) { setQIdx(questionIdx - 1); setErrors({}); }
-    else { setScreen('intro'); setErrors({}); }
+  // Field handlers
+  function updateAnswer(key, value) {
+    setAnswers(prev => ({ ...prev, [key]: value }));
+    if (saveError) setSaveError('');
   }
 
-  // Mark first render done after profile loads
-  useEffect(() => {
-    if (screen === 'section' || screen === 'intro') {
-      isFirstRender.current = false;
+  function handleTagKeyDown(e, key) {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const value = (tagInput[key] || '').trim();
+      if (value && !answers[key].includes(value)) {
+        updateAnswer(key, [...answers[key], value]);
+      }
+      setTagInput(prev => ({ ...prev, [key]: '' }));
     }
-  }, [screen]);
-
-  // ── Save indicator ────────────────────────────────────────────
-  function SaveIndicator() {
-    if (!isSaving && !lastSaved) return null;
-    return (
-      <div className={styles.saveIndicator}>
-        {isSaving ? (
-          <><span className={styles.saveDotSpin} />Saving...</>
-        ) : lastSaved ? (
-          <><span className={styles.saveDotDone} />Saved {formatTimeAgo(lastSaved)}</>
-        ) : null}
-      </div>
-    );
   }
 
-  // ── Loading profile state ─────────────────────────────────────
-  if (screen === 'loading-profile') return (
-    <div className={styles.page}>
-      <div className={styles.loadingWrap}>
-        <div className={styles.dots}><span /><span /><span /></div>
-        <p className={styles.loadingSub}>Loading your constitution...</p>
-      </div>
-    </div>
-  );
+  function removeTag(key, index) {
+    updateAnswer(key, answers[key].filter((_, i) => i !== index));
+  }
 
-  // ── Intro ─────────────────────────────────────────────────────
-  if (screen === 'intro') return (
-    <div className={styles.page}>
-      <header className={styles.header}>
-        <span className={styles.logo}>BrandShift</span>
-      </header>
-      <div className={styles.introWrap}>
-        <div className={styles.introCard}>
-          <p className={styles.eyebrow}>Core Constitution · 5 minutes</p>
-          <h1 className={styles.introHeading}>Five questions most brand managers have never been asked</h1>
-          <p className={styles.introBody}>
-            Your answers become the foundation of everything BrandShift builds for you. Takes 5 minutes. No right answers.
-          </p>
-          <div className={styles.introDivider} />
-          <div className={styles.introMeta}>
-            <span>5 questions now</span><span>·</span><span>15 more over time via Daily Pulse</span>
+  // ── Render question ─────────────────────────────────────────
+
+  function renderQuestion(question) {
+    const { key, type, label, sublabel, placeholder } = question;
+    const sColor = SECTIONS[currentStep].color;
+    const hex = colorValue(sColor);
+
+    if (type === 'textarea') {
+      const hasVal = (answers[key] || '').length > 3;
+      return (
+        <div key={key} style={{ marginBottom: 28 }}>
+          <label style={{ display: 'block', fontFamily: 'var(--font-headline)', fontSize: 18, color: 'var(--bs-text-primary)', lineHeight: 1.4, marginBottom: 6 }}>{label}</label>
+          {sublabel && <p style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: 'var(--bs-text-tertiary)', margin: '0 0 10px' }}>{sublabel}</p>}
+          <textarea value={answers[key] || ''} onChange={e => updateAnswer(key, e.target.value)} placeholder={placeholder} rows={4}
+            style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: hasVal ? `1px solid ${hex}40` : '1px solid rgba(255,255,255,0.1)', borderRadius: 'var(--radius)', padding: '14px 16px', fontFamily: 'var(--font-ui)', fontSize: 14, color: 'var(--bs-text-primary)', lineHeight: 1.7, resize: 'vertical', outline: 'none', boxSizing: 'border-box', transition: 'border 0.2s' }} />
+        </div>
+      );
+    }
+
+    if (type === 'tags') {
+      const tags = answers[key] || [];
+      return (
+        <div key={key} style={{ marginBottom: 28 }}>
+          <label style={{ display: 'block', fontFamily: 'var(--font-headline)', fontSize: 18, color: 'var(--bs-text-primary)', lineHeight: 1.4, marginBottom: 6 }}>{label}</label>
+          {sublabel && <p style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: 'var(--bs-text-tertiary)', margin: '0 0 10px' }}>{sublabel}</p>}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: tags.length ? 10 : 0 }}>
+            {tags.map((tag, i) => (
+              <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, background: `${hex}15`, border: `1px solid ${hex}40`, borderRadius: 100, padding: '5px 12px', fontFamily: 'var(--font-ui)', fontSize: 13, color: hex }}>
+                {tag}
+                <X size={12} style={{ cursor: 'pointer', opacity: 0.7 }} onClick={() => removeTag(key, i)} />
+              </span>
+            ))}
           </div>
-          <button className={styles.startBtn} onClick={() => { setScreen('section'); setQIdx(0); }}>
-            Let&apos;s go →
-          </button>
-          <button className={styles.skipBtn} onClick={handleSkip}>
-            Skip for now — I&apos;ll complete this later
-          </button>
+          <input type="text" value={tagInput[key] || ''} onChange={e => setTagInput(prev => ({ ...prev, [key]: e.target.value }))} onKeyDown={e => handleTagKeyDown(e, key)} placeholder={tags.length ? '+ Add another...' : placeholder}
+            style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: tags.length ? `1px solid ${hex}40` : '1px solid rgba(255,255,255,0.1)', borderRadius: 'var(--radius)', padding: '12px 16px', fontFamily: 'var(--font-ui)', fontSize: 14, color: 'var(--bs-text-primary)', outline: 'none', boxSizing: 'border-box' }} />
+          <p style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--bs-text-tertiary)', margin: '6px 0 0' }}>Press Enter to add each item</p>
         </div>
-      </div>
-    </div>
-  );
+      );
+    }
+    return null;
+  }
 
-  // ── Generating ────────────────────────────────────────────────
-  if (screen === 'generating') return (
-    <div className={styles.page}>
-      <div className={styles.loadingWrap}>
-        <p className={styles.loadingText}>Building your Brand Constitution</p>
-        <div className={styles.dots}><span /><span /><span /></div>
-        <p className={styles.loadingSub}>Synthesising your answers into a brand document…</p>
-      </div>
-    </div>
-  );
+  // ── Loading ─────────────────────────────────────────────────
 
-  // ── Result ────────────────────────────────────────────────────
-  if (screen === 'result' && constitution) return (
-    <div className={styles.page}>
-      <header className={styles.header}>
-        <span className={styles.logo}>BrandShift</span>
-        <span className={styles.headerBadge}>Brand Constitution</span>
-      </header>
-      <div className={styles.resultWrap}>
-        <div className={styles.resultHeader}>
-          <h1 className={styles.resultTitle}>{brandName} Brand Constitution</h1>
-          <p className={styles.resultDate}>Generated {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-        </div>
-        {[
-          { key: 'who_we_are', title: 'Who We Are', type: 'text' },
-          { key: 'our_personality', title: 'Our Personality', type: 'personality' },
-          { key: 'how_we_speak', title: 'How We Speak', type: 'voice' },
-          { key: 'who_we_are_for', title: "Who We're For", type: 'text' },
-          { key: 'what_we_will_never_do', title: "What We'll Never Do", type: 'never' },
-          { key: 'where_we_are_going', title: "Where We're Going", type: 'text' },
-        ].map(({ key, title, type }) => {
-          const val = constitution[key];
-          const isBuilding = !val || val === 'Building...';
-          return (
-            <div key={key} className={`${styles.cCard} ${isBuilding ? styles.cCardBuilding : ''}`}>
-              <h2 className={styles.cSection}>{title}</h2>
-              {isBuilding ? (
-                <p className={styles.buildingText}>Building… this section fills in as you answer more daily questions.</p>
-              ) : type === 'text' ? (
-                <p className={styles.cText}>{val}</p>
-              ) : type === 'personality' ? (
-                <>
-                  <div className={styles.wordPills}>{val?.words?.map((w, i) => <span key={i} className={styles.wordPill}>{w}</span>)}</div>
-                  {val?.description && <p className={styles.cText}>{val.description}</p>}
-                </>
-              ) : type === 'voice' ? (
-                <>
-                  <ul className={styles.rulesList}>{val?.rules?.map((r, i) => <li key={i}>{r}</li>)}</ul>
-                  {(val?.example_good || val?.example_bad) && (
-                    <div className={styles.voiceExamples}>
-                      {val.example_good && <div className={styles.goodEx}><span className={styles.exLabel}>✓ On-brand</span><p>&quot;{val.example_good}&quot;</p></div>}
-                      {val.example_bad && <div className={styles.badEx}><span className={styles.exLabel}>✗ Off-brand</span><p>&quot;{val.example_bad}&quot;</p></div>}
-                    </div>
-                  )}
-                </>
-              ) : type === 'never' ? (
-                <ul className={styles.neverList}>{val?.map((item, i) => <li key={i}>{item}</li>)}</ul>
-              ) : null}
-            </div>
-          );
-        })}
-        <div className={styles.resultFooter}>
-          <p className={styles.footerText}>This is your brand&apos;s north star. Every roadmap task, every score, every recommendation will be measured against this.</p>
-          <button className={styles.dashBtn} onClick={() => router.push('/dashboard')}>Go to My Dashboard →</button>
-        </div>
-      </div>
-    </div>
-  );
-
-  // ── Section screen (form) ─────────────────────────────────────
-
-  const isLastQ      = questionIdx === totalQ - 1;
-  const qProgressPct = ((questionIdx) / totalQ) * 100;
-
-  function renderField(q) {
-    const err = errors[q.field];
+  if (isLoading) {
     return (
-      <div key={q.field} className={styles.qBlock}>
-        {isMobile && <p className={styles.mobileQNum}>Question {questionIdx + 1} of {totalQ}</p>}
-        <label className={styles.qLabel}>{q.label}</label>
-        {q.type === 'textarea' && (
-          <textarea
-            className={`${styles.qTextarea} ${err ? styles.hasErr : ''}`}
-            value={answers[q.field]}
-            onChange={e => setAnswer(q.field, e.target.value)}
-            onBlur={immediateSave}
-            placeholder={q.placeholder}
-            rows={5}
-          />
-        )}
-        {q.type === 'text' && (
-          <input
-            type="text"
-            className={`${styles.qInput} ${err ? styles.hasErr : ''}`}
-            value={answers[q.field]}
-            onChange={e => setAnswer(q.field, e.target.value)}
-            onBlur={immediateSave}
-            placeholder={q.placeholder}
-          />
-        )}
-        {q.type === 'tags' && (
-          <TagInput
-            value={answers[q.field]}
-            onChange={v => setAnswer(q.field, v)}
-            onSave={immediateSave}
-            min={q.min}
-            max={q.max}
-            placeholder={q.placeholder}
-          />
-        )}
-        {err && <p className={styles.errMsg}>{err}</p>}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: 12 }}>
+        <Loader size={20} color="var(--bs-violet)" style={{ animation: 'spin 1s linear infinite' }} />
+        <span style={{ fontFamily: 'var(--font-ui)', fontSize: 14, color: 'var(--bs-text-secondary)' }}>Loading your constitution...</span>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
+
+  // ── Complete — Show Bible ───────────────────────────────────
+
+  if (isComplete && bibleContent) {
+    return (
+      <div style={{ padding: 40, maxWidth: 760 }}>
+        <div style={{ marginBottom: 32 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(46,196,160,0.1)', border: '1px solid rgba(46,196,160,0.2)', borderRadius: 100, padding: '4px 14px', marginBottom: 16 }}>
+            <Check size={12} color="var(--bs-teal)" />
+            <span style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--bs-teal)' }}>Constitution complete</span>
+          </div>
+          <h1 style={{ fontFamily: 'var(--font-headline)', fontSize: 32, color: 'var(--bs-text-primary)', margin: '0 0 8px' }}>{brandName} Brand Bible</h1>
+          <p style={{ fontFamily: 'var(--font-ui)', fontSize: 14, color: 'var(--bs-text-secondary)', margin: 0 }}>Your living brand document. Share with your team and agency.</p>
+        </div>
+
+        <div style={{ background: 'var(--bs-card-dark)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 'var(--radius)', padding: 40, marginBottom: 24 }}>
+          {bibleContent.split('\n').map((line, i) => {
+            if (line.match(/^[A-Z][A-Z\s]+:/)) {
+              return <h2 key={i} style={{ fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: 2, color: 'var(--bs-violet)', margin: i === 0 ? '0 0 12px' : '28px 0 12px', textTransform: 'uppercase' }}>{line.replace(':', '')}</h2>;
+            }
+            if (line.match(/^[→•\-]/)) {
+              return (
+                <div key={i} style={{ display: 'flex', gap: 10, marginBottom: 8, alignItems: 'flex-start' }}>
+                  <span style={{ color: 'var(--bs-violet)', flexShrink: 0, marginTop: 2 }}>→</span>
+                  <span style={{ fontFamily: 'var(--font-ui)', fontSize: 14, color: 'var(--bs-text-secondary)', lineHeight: 1.6 }}>{line.replace(/^[→•\-]\s*/, '')}</span>
+                </div>
+              );
+            }
+            if (!line.trim()) return <div key={i} style={{ height: 8 }} />;
+            return <p key={i} style={{ fontFamily: 'var(--font-ui)', fontSize: 14, color: 'var(--bs-text-primary)', lineHeight: 1.7, margin: '0 0 12px' }}>{line}</p>;
+          })}
+        </div>
+
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <button onClick={() => window.print()} style={{ background: 'var(--bs-orange)', color: 'white', border: 'none', borderRadius: 'var(--radius)', padding: '12px 24px', fontFamily: 'var(--font-ui)', fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>Download as PDF</button>
+          <button onClick={() => navigator.clipboard.writeText(bibleContent)} style={{ background: 'transparent', color: 'var(--bs-text-primary)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 'var(--radius)', padding: '12px 24px', fontFamily: 'var(--font-ui)', fontSize: 14, cursor: 'pointer' }}>Copy text</button>
+          <button onClick={() => { setIsComplete(false); setCurrentStep(0); }} style={{ background: 'transparent', color: 'var(--bs-text-tertiary)', border: 'none', padding: 12, fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}>Edit answers →</button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Generating ──────────────────────────────────────────────
+
+  if (isGenerating) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: 16, textAlign: 'center' }}>
+        <Loader size={32} color="var(--bs-violet)" style={{ animation: 'spin 1s linear infinite' }} />
+        <h2 style={{ fontFamily: 'var(--font-headline)', fontSize: 24, color: 'var(--bs-text-primary)', margin: 0 }}>Writing your Brand Bible...</h2>
+        <p style={{ fontFamily: 'var(--font-ui)', fontSize: 14, color: 'var(--bs-text-secondary)', margin: 0, maxWidth: 400 }}>Turning your answers into a complete brand document. Takes about 20 seconds.</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  // ── Main Form ───────────────────────────────────────────────
+
+  const section = SECTIONS[currentStep];
+  const isLastStep = currentStep === SECTIONS.length - 1;
+  const hex = colorValue(section.color);
 
   return (
-    <div className={styles.page}>
-      <header className={styles.header}>
-        <span className={styles.logo}>BrandShift</span>
-        <SaveIndicator />
-        <span className={styles.timeLeft}>Core Constitution · 5 min</span>
-        <button className={styles.skipLink} onClick={handleSkip}>Complete later →</button>
-      </header>
-
-      <div className={styles.progressBar}>
-        <div className={styles.progressFill} style={{ width: `${qProgressPct}%` }} />
-      </div>
-
-      <div className={styles.sectionWrap}>
-        <div className={styles.sectionMeta}>
-          <span className={styles.sectionNum}>Question {questionIdx + 1} of {totalQ}</span>
+    <div style={{ padding: 40, maxWidth: 680 }}>
+      {/* Progress */}
+      <div style={{ marginBottom: 32 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+          <span style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--bs-text-tertiary)' }}>Section {currentStep + 1} of {SECTIONS.length}</span>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--bs-text-tertiary)' }}>{Math.round(((currentStep + 1) / SECTIONS.length) * 100)}%</span>
         </div>
-
-        <div className={styles.questions}>
-          {isMobile
-            ? renderField(CORE_QUESTIONS[questionIdx])
-            : CORE_QUESTIONS.map(q => renderField(q))
-          }
+        <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${((currentStep + 1) / SECTIONS.length) * 100}%`, background: hex, borderRadius: 2, transition: 'width 0.4s ease' }} />
         </div>
-
-        {genError && (() => {
-          const friendly = genError.includes('overloaded') || genError.includes('529')
-            ? { title: 'AI is busy right now', message: "We'll retry automatically — or try again in 30 seconds.", action: 'Try again' }
-            : genError.includes('timeout')
-            ? { title: 'Request timed out', message: 'The generation took too long.', action: 'Try again' }
-            : { title: 'Something went wrong', message: 'Unable to generate your constitution.', action: 'Try again' };
-          return (
-            <div className={styles.sectionErr}>
-              <div style={{ fontWeight: 500, color: 'var(--bs-amber)', marginBottom: 4 }}>{friendly.title}</div>
-              <div style={{ fontSize: 13, color: 'var(--bs-text-secondary)', lineHeight: 1.5, marginBottom: 12 }}>{friendly.message}</div>
-              <button onClick={() => { setGenError(''); handleNext(); }} style={{ background: 'var(--bs-orange)', color: 'white', border: 'none', borderRadius: 'var(--radius)', padding: '8px 20px', fontSize: 13, cursor: 'pointer' }}>{friendly.action}</button>
-            </div>
-          );
-        })()}
-
-        <div className={styles.navRow}>
-          <button className={styles.backBtn} onClick={handleBack}>← Back</button>
-          <div className={styles.navRight}>
-            {saveMsg && <span className={styles.saveMsg}>{saveMsg}</span>}
-            <button className={styles.saveLaterBtn} onClick={handleSaveLater} disabled={saving}>{saving ? 'Saving…' : 'Save for later'}</button>
-            <button className={styles.nextBtn} onClick={handleNext}>{isMobile ? (isLastQ ? 'Generate Constitution →' : 'Next →') : 'Generate Constitution →'}</button>
-          </div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+          {SECTIONS.map((_, i) => (
+            <div key={i} style={{ flex: 1, height: 3, borderRadius: 1.5, background: i <= currentStep ? hex : 'rgba(255,255,255,0.08)', transition: 'background 0.3s ease' }} />
+          ))}
         </div>
       </div>
 
-      {/* Toast */}
-      {toastMsg && (
-        <div style={{
-          position: 'fixed', bottom: 24, right: 24,
-          background: 'var(--bs-card-light)', border: '1px solid var(--bs-teal)',
-          borderRadius: 'var(--radius)', padding: '10px 20px',
-          fontFamily: 'var(--font-ui)', fontSize: 13, color: 'var(--bs-teal)',
-          zIndex: 100, animation: 'fadeIn 0.2s ease',
-        }}>
-          {toastMsg} ✓
-        </div>
+      {/* Section header */}
+      <div style={{ marginBottom: 32 }}>
+        <div style={{ display: 'inline-block', background: `${hex}15`, color: hex, border: `1px solid ${hex}30`, borderRadius: 100, padding: '4px 14px', fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 }}>{section.subtitle}</div>
+        <h1 style={{ fontFamily: 'var(--font-headline)', fontSize: 28, color: 'var(--bs-text-primary)', margin: 0, lineHeight: 1.2 }}>{section.title}</h1>
+      </div>
+
+      {/* Questions */}
+      <div>{section.questions.map(q => renderQuestion(q))}</div>
+
+      {/* Error */}
+      {saveError && (
+        <div style={{ background: 'rgba(212,24,61,0.08)', border: '1px solid rgba(212,24,61,0.2)', borderRadius: 'var(--radius)', padding: '12px 16px', marginBottom: 20, fontFamily: 'var(--font-ui)', fontSize: 13, color: '#d4183d' }}>{saveError}</div>
       )}
+
+      {/* Navigation */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 24, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <button onClick={handleBack} disabled={currentStep === 0}
+          style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 'var(--radius)', padding: '12px 24px', fontFamily: 'var(--font-ui)', fontSize: 14, color: currentStep === 0 ? 'var(--bs-text-tertiary)' : 'var(--bs-text-primary)', cursor: currentStep === 0 ? 'not-allowed' : 'pointer', opacity: currentStep === 0 ? 0.4 : 1 }}>
+          ← Back
+        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {isSaving && (
+            <span style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--bs-text-tertiary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Loader size={12} style={{ animation: 'spin 1s linear infinite' }} />Saving...
+            </span>
+          )}
+          <button onClick={handleNext} disabled={isSaving}
+            style={{ background: isSaving ? `${hex}60` : hex, color: 'white', border: 'none', borderRadius: 'var(--radius)', padding: '12px 28px', fontFamily: 'var(--font-ui)', fontSize: 14, fontWeight: 500, cursor: isSaving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+            {isLastStep ? 'Generate Brand Bible →' : 'Save & Continue →'}
+          </button>
+        </div>
+      </div>
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
