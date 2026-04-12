@@ -247,50 +247,149 @@ Brand Personality: ${parsed.brand_personality}
   }
 }
 
-// ── LinkedIn scraping ────────────────────────────────────────────
+// ── LinkedIn scraping (Apify) ────────────────────────────────────
 async function scrapeLinkedIn(url) {
   if (!url || url.trim() === '') return '';
   try {
     let cleanUrl = url.trim();
     if (!cleanUrl.startsWith('http')) cleanUrl = 'https://' + cleanUrl;
     cleanUrl = cleanUrl.replace(/\/$/, '');
-    console.log('Scraping LinkedIn:', cleanUrl);
 
-    const result = await firecrawl.scrapeUrl(cleanUrl, { formats: ['markdown'] });
-    const content = result?.markdown || result?.data?.markdown || '';
-    if (!content || content.length < 50) {
-      console.log('LinkedIn: insufficient content');
+    const slugMatch = cleanUrl.match(/linkedin\.com\/company\/([^\/\?]+)/);
+    if (!slugMatch) {
+      console.log('LinkedIn: invalid URL format:', cleanUrl);
+      return '';
+    }
+    const companySlug = slugMatch[1];
+    console.log('LinkedIn company slug:', companySlug);
+
+    const token = process.env.APIFY_API_TOKEN;
+
+    // Start Apify LinkedIn company scraper
+    const runResponse = await fetch(
+      `https://api.apify.com/v2/acts/curious_coder~linkedin-company-profile-scraper/runs?token=${token}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ startUrls: [{ url: cleanUrl }], maxDelay: 5, minDelay: 2 }),
+      }
+    );
+
+    if (!runResponse.ok) {
+      console.log('LinkedIn: Apify actor start failed, trying fallback');
+      return await scrapeLinkedInFallback(cleanUrl, companySlug);
+    }
+
+    const run = await runResponse.json();
+    const runId = run?.data?.id;
+    if (!runId) {
+      console.log('LinkedIn: Apify run failed to start');
+      return await scrapeLinkedInFallback(cleanUrl, companySlug);
+    }
+    console.log('LinkedIn Apify run:', runId);
+
+    // Poll for completion
+    let attempts = 0;
+    let status = 'RUNNING';
+    while (status === 'RUNNING' && attempts < 8) {
+      await new Promise(r => setTimeout(r, 4000));
+      const statusRes = await fetch(`https://api.apify.com/v2/actor-runs/${runId}?token=${token}`);
+      const statusData = await statusRes.json();
+      status = statusData?.data?.status;
+      attempts++;
+      console.log(`LinkedIn poll ${attempts}: ${status}`);
+    }
+
+    if (status !== 'SUCCEEDED') {
+      console.log('LinkedIn Apify did not succeed:', status);
+      return await scrapeLinkedInFallback(cleanUrl, companySlug);
+    }
+
+    const runDetails = await fetch(`https://api.apify.com/v2/actor-runs/${runId}?token=${token}`).then(r => r.json());
+    const datasetId = runDetails?.data?.defaultDatasetId;
+    if (!datasetId) return '';
+
+    const items = await fetch(`https://api.apify.com/v2/datasets/${datasetId}/items?token=${token}`).then(r => r.json());
+    if (!items?.length) {
+      console.log('LinkedIn: no data returned');
       return '';
     }
 
-    const cleaned = extractLinkedInData(content, cleanUrl);
-    console.log('LinkedIn scraped:', { length: cleaned.length, preview: cleaned.slice(0, 100) });
-    return cleaned.slice(0, 3000);
+    const company = items[0];
+    console.log('LinkedIn data keys:', Object.keys(company));
+    return formatLinkedInData(company, companySlug);
   } catch (err) {
-    console.error('LinkedIn scrape failed:', err.message);
+    console.error('LinkedIn scrape error:', err.message);
     return '';
   }
 }
 
-function extractLinkedInData(content, url) {
-  const lines = content.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-  const companySlug = url.split('/company/')[1]?.replace(/\/$/, '')?.split('/')[0] || '';
-  const followerLine = lines.find(l => l.toLowerCase().includes('follower'));
-  const aboutIndex = lines.findIndex(l => l.toLowerCase() === 'about' || l.toLowerCase().includes('overview'));
-  const aboutText = aboutIndex >= 0
-    ? lines.slice(aboutIndex + 1, aboutIndex + 6).filter(l => l.length > 20).join(' ')
-    : '';
-  const postLines = lines.filter(l =>
-    l.length > 30 && l.length < 300 && !l.includes('http') && !l.startsWith('#') &&
-    !l.toLowerCase().includes('follow') && !l.toLowerCase().includes('connect') &&
-    !l.toLowerCase().includes('notification')
-  ).slice(0, 5);
+// Fallback — try Firecrawl with /about page
+async function scrapeLinkedInFallback(url, slug) {
+  console.log('LinkedIn: trying Firecrawl fallback');
+  try {
+    const aboutUrl = url.includes('/about') ? url : url + '/about';
+    const result = await firecrawl.scrapeUrl(aboutUrl, { formats: ['markdown'], waitFor: 3000 });
+    const content = result?.markdown || result?.data?.markdown || '';
+    if (content.length < 100) {
+      console.log('LinkedIn fallback: insufficient content');
+      return '';
+    }
+    return extractLinkedInFromRaw(content, slug);
+  } catch (err) {
+    console.error('LinkedIn fallback failed:', err.message);
+    return '';
+  }
+}
 
-  const parts = ['LINKEDIN COMPANY PAGE:', `Company: ${companySlug}`, `URL: ${url}`];
-  if (followerLine) parts.push(`Followers: ${followerLine}`);
-  if (aboutText) parts.push('', 'ABOUT:', aboutText);
-  if (postLines.length > 0) parts.push('', 'RECENT CONTENT:', ...postLines.map((l, i) => `Post ${i + 1}: ${l}`));
-  return parts.join('\n');
+function formatLinkedInData(company, slug) {
+  const parts = [
+    'LINKEDIN COMPANY PAGE:',
+    `Company: ${company.name || company.companyName || slug}`,
+    `URL: https://linkedin.com/company/${slug}`,
+  ];
+
+  const followers = company.followersCount || company.followers || null;
+  if (followers) parts.push(`Followers: ${typeof followers === 'number' ? followers.toLocaleString() : followers} followers`);
+  if (company.industry || company.industries) {
+    parts.push(`Industry: ${company.industry || (Array.isArray(company.industries) ? company.industries[0] : company.industries)}`);
+  }
+  if (company.companySize || company.staffCount) {
+    parts.push(`Company size: ${company.companySize || company.staffCount} employees`);
+  }
+
+  const about = company.description || company.about || company.overview || company.tagline || '';
+  if (about && about.length > 20) parts.push('', 'ABOUT:', about);
+
+  const specialties = company.specialties || company.speciality || [];
+  if (specialties?.length > 0) {
+    parts.push('', `Specialties: ${Array.isArray(specialties) ? specialties.slice(0, 5).join(', ') : specialties}`);
+  }
+
+  const posts = company.posts || company.updates || company.recentPosts || [];
+  if (posts?.length > 0) {
+    parts.push('', 'RECENT POSTS:');
+    posts.slice(0, 5).forEach((post, i) => {
+      const text = post.text || post.content || post.body || post.commentary || '';
+      if (text.length > 20) parts.push(`Post ${i + 1}: "${text.slice(0, 200)}"`);
+    });
+  }
+
+  const result = parts.join('\n');
+  console.log('LinkedIn formatted:', result.slice(0, 200));
+  return result.slice(0, 3000);
+}
+
+function extractLinkedInFromRaw(content, slug) {
+  const lines = content.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  const meaningful = lines.filter(l =>
+    l.length > 20 && l.length < 400 &&
+    !l.includes('Sign in') && !l.includes('Join now') &&
+    !l.toLowerCase().includes('cookie') &&
+    !l.startsWith('http') && !l.startsWith('[') && !l.startsWith('!')
+  );
+  if (meaningful.length === 0) return '';
+  return ['LINKEDIN COMPANY PAGE:', `Company: ${slug}`, `URL: https://linkedin.com/company/${slug}`, '', 'OVERVIEW:', ...meaningful.slice(0, 10)].join('\n');
 }
 
 function extractLinkedInFollowers(content) {
@@ -311,7 +410,8 @@ export async function POST(request) {
   const cleanComp1Url   = extractHomepageUrl(comp1Url || '');
   const cleanComp2Url   = extractHomepageUrl(comp2Url || '');
 
-  console.log('Scrape route called with:', { websiteUrl, instagramHandle, linkedinUrl, comp1Url, comp2Url });
+  console.log('=== SCRAPE ROUTE START ===');
+  console.log('Body received:', { websiteUrl, instagramHandle, linkedinUrl, comp1Url, comp2Url });
   console.log('URLs after cleaning:', { cleanWebsiteUrl, cleanComp1Url, cleanComp2Url });
   console.log('Competitor URLs after cleaning:', { comp1: cleanComp1Url, comp2: cleanComp2Url });
 
@@ -353,7 +453,12 @@ export async function POST(request) {
   console.log('About:',       { length: scrapedAbout.length,     preview: scrapedAbout.slice(0, 100)     || 'EMPTY' });
   console.log('Blog:',        { length: scrapedBlog.length,      preview: scrapedBlog.slice(0, 100)      || 'EMPTY' });
   console.log('Instagram:',   { length: scrapedInstagram.length, preview: scrapedInstagram.slice(0, 100) || 'EMPTY' });
-  console.log('LinkedIn:',    { length: scrapedLinkedIn.length,  preview: scrapedLinkedIn.slice(0, 100)  || 'EMPTY' });
+  console.log('LinkedIn:', {
+    provided: !!linkedinUrl,
+    scraped: scrapedLinkedIn.length > 0,
+    length: scrapedLinkedIn.length,
+    preview: scrapedLinkedIn.slice(0, 150) || 'EMPTY',
+  });
   console.log('Competitor 1:',{ length: scrapedComp1.length,     preview: scrapedComp1.slice(0, 100)     || 'EMPTY' });
   console.log('Competitor 2:',{ length: scrapedComp2.length,     preview: scrapedComp2.slice(0, 100)     || 'EMPTY' });
   console.log('=== END SCRAPE RESULTS ===');

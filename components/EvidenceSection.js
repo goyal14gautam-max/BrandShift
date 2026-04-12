@@ -1,14 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { Globe, AtSign, Target, ExternalLink } from 'lucide-react';
+import { Globe, AtSign, Target, ExternalLink, Linkedin } from 'lucide-react';
 import styles from './EvidenceSection.module.css';
 
 // ── Tab config ────────────────────────────────────────────────
-const TABS = [
-  { id: 'website',     label: 'Website',     icon: Globe   },
-  { id: 'instagram',   label: 'Instagram',   icon: AtSign  },
-  { id: 'competitors', label: 'Competitors', icon: Target  },
+const BASE_TABS = [
+  { id: 'website',     label: 'Website',     icon: Globe    },
+  { id: 'instagram',   label: 'Instagram',   icon: AtSign   },
+  { id: 'linkedin',    label: 'LinkedIn',    icon: Linkedin },
+  { id: 'competitors', label: 'Competitors', icon: Target   },
 ];
 
 // ── Browser chrome mockup ─────────────────────────────────────
@@ -212,14 +213,73 @@ function CompetitorsTab({ comp1Screenshot, comp2Screenshot, comp1Name, comp2Name
 }
 
 // ── Main component ─────────────────────────────────────────────
+function LinkedInTab({ rawLinkedIn }) {
+  if (!rawLinkedIn) return <p className={styles.emptyMsg}>No LinkedIn data available.</p>;
+  const lines = rawLinkedIn.split('\n').filter(l => l.trim());
+
+  const companyLine = lines.find(l => l.startsWith('Company:'));
+  const followerLine = lines.find(l => l.startsWith('Followers:'));
+  const industryLine = lines.find(l => l.startsWith('Industry:'));
+  const aboutIdx = lines.findIndex(l => l === 'ABOUT:');
+  const postsIdx = lines.findIndex(l => l === 'RECENT POSTS:');
+
+  const aboutText = aboutIdx >= 0
+    ? lines.slice(aboutIdx + 1, postsIdx > 0 ? postsIdx : aboutIdx + 6).filter(l => !l.startsWith('LINKEDIN') && !l.startsWith('Company:') && !l.startsWith('URL:')).join(' ')
+    : '';
+
+  const posts = postsIdx >= 0
+    ? lines.slice(postsIdx + 1).filter(l => l.match(/^Post \d+:/)).map(l => l.replace(/^Post \d+:\s*/, '').replace(/^"/, '').replace(/"$/, ''))
+    : [];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Company header */}
+      <div style={{ background: 'rgba(10,102,194,0.06)', border: '1px solid rgba(10,102,194,0.15)', borderRadius: 'var(--radius)', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{ width: 44, height: 44, background: '#0A66C2', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <Linkedin size={22} color="white" />
+        </div>
+        <div>
+          <p style={{ fontFamily: 'var(--font-ui)', fontSize: 14, fontWeight: 500, color: 'var(--bs-text-primary)' }}>{companyLine?.replace('Company: ', '') || 'Company'}</p>
+          {followerLine && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--bs-text-secondary)', marginTop: 2 }}>{followerLine.replace('Followers: ', '')}</p>}
+          {industryLine && <p style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--bs-text-tertiary)', marginTop: 2 }}>{industryLine.replace('Industry: ', '')}</p>}
+        </div>
+      </div>
+
+      {/* About */}
+      {aboutText && (
+        <div className={styles.snippetCard}>
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: '#0A66C2', marginBottom: 8 }}>COMPANY OVERVIEW</p>
+          <p style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: 'var(--bs-text-secondary)', lineHeight: 1.6 }}>{aboutText}</p>
+        </div>
+      )}
+
+      {/* Posts */}
+      {posts.length > 0 && (
+        <div>
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: 'var(--bs-text-tertiary)', marginBottom: 10 }}>RECENT POSTS</p>
+          {posts.map((post, i) => (
+            <div key={i} className={styles.snippetCard} style={{ marginBottom: 8 }}>
+              <p style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: 'var(--bs-text-secondary)', lineHeight: 1.6 }}>{post}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function EvidenceSection({ scrapedData, evidenceQuotes }) {
   const [activeTab, setActiveTab] = useState('website');
 
   const screenshots    = scrapedData?.screenshots || {};
   const rawInstagram   = scrapedData?.scraped_instagram || '';
+  const rawLinkedIn    = scrapedData?.scraped_linkedin || '';
   const websiteUrl     = scrapedData?.websiteUrl || '';
   const comp1Name      = scrapedData?.comp1Name || '';
   const comp2Name      = scrapedData?.comp2Name || '';
+
+  const hasLinkedIn = rawLinkedIn && rawLinkedIn.length > 50 && !rawLinkedIn.includes('Sign in');
+  const TABS = hasLinkedIn ? BASE_TABS : BASE_TABS.filter(t => t.id !== 'linkedin');
 
   return (
     <div className={styles.wrap}>
@@ -251,6 +311,9 @@ export default function EvidenceSection({ scrapedData, evidenceQuotes }) {
         )}
         {activeTab === 'instagram' && (
           <InstagramTab rawInstagram={rawInstagram} />
+        )}
+        {activeTab === 'linkedin' && (
+          <LinkedInTab rawLinkedIn={rawLinkedIn} />
         )}
         {activeTab === 'competitors' && (
           <CompetitorsTab

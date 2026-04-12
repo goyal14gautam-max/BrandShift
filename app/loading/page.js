@@ -180,9 +180,11 @@ export default function Loading() {
       localStorage.setItem('brandshift_scraped',      JSON.stringify({
         screenshots:       scrapeData.screenshots      || {},
         scraped_instagram: scrapeData.scraped_instagram || '',
+        scraped_linkedin:  scrapeData.scraped_linkedin  || '',
         comp1Name:         c1.name,
         comp2Name:         c2.name,
         websiteUrl:        intake.websiteUrl || '',
+        linkedinUrl:       intake.linkedinPage || '',
       }));
 
       setProgress(100);
