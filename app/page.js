@@ -52,7 +52,10 @@ export default function Home() {
     trackPageView('landing_page');
     const supabase = createSupabaseBrowserClient();
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) router.replace('/dashboard');
+      if (session?.user) {
+        const roadmap = localStorage.getItem('brandshift_roadmap');
+        router.replace(roadmap ? '/dashboard' : '/roadmap');
+      }
     });
   }, []);
 
@@ -65,7 +68,10 @@ export default function Home() {
         <div className={styles.navRight}>
           {!isLoading && (
             user ? (
-              <button className={styles.navCta} onClick={() => router.push('/dashboard')}>
+              <button className={styles.navCta} onClick={() => {
+                const roadmap = typeof window !== 'undefined' ? localStorage.getItem('brandshift_roadmap') : null;
+                router.push(roadmap ? '/dashboard' : '/roadmap');
+              }}>
                 Go to Dashboard →
               </button>
             ) : (

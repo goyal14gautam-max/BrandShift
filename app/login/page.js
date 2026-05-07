@@ -62,7 +62,7 @@ function LoginInner() {
     setLoading(true);
     const { error: err } = await supabase.auth.signInWithPassword({ email, password });
     if (err) { setError(friendlyError(err.message)); setLoading(false); return; }
-    window.location.href = getPostLoginUrl();
+    window.location.href = '/roadmap';
   }
 
   async function handleMagicLink(e) {

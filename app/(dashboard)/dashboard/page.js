@@ -586,12 +586,12 @@ export default function Dashboard() {
     }
   }, [isLoading, profile]);
 
-  // Redirect to results if no roadmap yet — but only if localStorage also has no roadmap
+  // Redirect to roadmap if no roadmap yet — but only if localStorage also has no roadmap
   useEffect(() => {
     if (!isLoading && profile && !profile.current_roadmap) {
       const localRoadmap = localStorage.getItem('brandshift_roadmap');
       if (!localRoadmap) {
-        router.replace('/results?message=complete_roadmap');
+        router.replace('/roadmap');
       }
     }
   }, [profile, isLoading, router]);
@@ -731,11 +731,15 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className={styles.focusRight}>
-                {streak > 0 && (
+                {streak > 0 ? (
                   <div className={styles.streakDisplay}>
                     <Flame size={20} style={{ color: 'var(--bs-amber)' }} />
                     <span className={styles.streakNum}>{streak}</span>
                     <span className={styles.streakLabel}>day streak</span>
+                  </div>
+                ) : (
+                  <div style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--bs-text-tertiary)' }}>
+                    Complete a task to start your streak
                   </div>
                 )}
                 <button className={styles.markDoneBtn}

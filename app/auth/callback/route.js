@@ -97,8 +97,8 @@ export async function GET(request) {
 
         console.log('Brand associated:', recentProfile.brand_name);
 
-        // New user who just got their brand — go to dashboard
-        return NextResponse.redirect(new URL('/dashboard', origin));
+        // New user who just got their brand — send to roadmap (no roadmap yet)
+        return NextResponse.redirect(new URL('/roadmap', origin));
       }
 
       // New user with no brand at all — go to constitution
@@ -107,8 +107,19 @@ export async function GET(request) {
       }
     }
 
-    // Everyone else goes to dashboard
-    return NextResponse.redirect(new URL('/dashboard', origin));
+    // Check if this user's brand profile already has a roadmap
+    const brandName = account?.primary_brand;
+    let hasRoadmap = false;
+    if (brandName) {
+      const { data: profile } = await supabaseAdmin
+        .from('brand_profiles')
+        .select('current_roadmap')
+        .ilike('brand_name', brandName)
+        .single();
+      hasRoadmap = !!profile?.current_roadmap;
+    }
+
+    return NextResponse.redirect(new URL(hasRoadmap ? '/dashboard' : '/roadmap', origin));
 
   } catch (err) {
     console.error('Callback error:', err);
