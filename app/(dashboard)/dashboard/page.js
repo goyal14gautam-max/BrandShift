@@ -196,14 +196,92 @@ function ErrorState({ error, onAction }) {
 }
 
 // ── Exit interview modal ──────────────────────────────────────
-function ExitModal({ taskText, onSave, onClose }) {
+function getTaskImpactMessage(task, profile) {
+  const dimNames = {
+    visual_identity:        'Visual Identity',
+    tone_voice:             'Brand Voice',
+    trend_relevance:        'Trend Relevance',
+    competitor_positioning: 'Competitor Positioning',
+    audience_alignment:     'Audience Alignment',
+  };
+
+  const scoreHistory = profile?.score_history || [];
+  const latest = scoreHistory.length ? scoreHistory[scoreHistory.length - 1] : null;
+  const dimensions = latest?.dimensions || {};
+
+  const weakest = Object.entries(dimensions)
+    .map(([k, v]) => ({ key: k, score: v?.score || 50 }))
+    .sort((a, b) => a.score - b.score)[0];
+
+  const completedThisWeek = (profile?.tasks || [])
+    .filter(t => t.week === profile?.current_week && t.status === 'done').length + 1;
+
+  const totalThisWeek = (profile?.tasks || [])
+    .filter(t => t.week === profile?.current_week).length;
+
+  if (totalThisWeek > 0 && completedThisWeek >= totalThisWeek) {
+    return `You've completed all tasks for Week ${profile?.current_week}. Your score refreshes Monday — keep going.`;
+  }
+
+  if (weakest) {
+    const dimName = dimNames[weakest.key] || weakest.key;
+    return `This task directly targets your ${dimName} score (${weakest.score}/100) — your biggest gap. ${completedThisWeek} of ${totalThisWeek} tasks done this week.`;
+  }
+
+  return `${completedThisWeek} of ${totalThisWeek} tasks done this week. Your brand score reflects consistent execution.`;
+}
+
+function ExitModal({ task, taskText, profile, onSave, onClose }) {
   const [didIt, setDidIt] = useState('');
   const [what, setWhat]   = useState('');
   const [diff, setDiff]   = useState('');
+  const [done, setDone]   = useState(false);
 
   function handleSave() {
     if (!didIt) return;
     onSave({ didIt, what, diff });
+    setDone(true);
+  }
+
+  if (done) {
+    return (
+      <div className={styles.modalOverlay} onClick={onClose}>
+        <div className={styles.modalCard} onClick={e => e.stopPropagation()}>
+          <h2 className={styles.modalHeading}>Task complete 🎉</h2>
+          <p className={styles.modalSub}>Your debrief is saved</p>
+
+          <div style={{
+            background: 'rgba(46,196,160,0.08)',
+            border: '1px solid rgba(46,196,160,0.2)',
+            borderRadius: 'var(--radius)',
+            padding: '16px 20px',
+            marginTop: 16,
+          }}>
+            <div style={{
+              fontFamily: 'var(--font-ui)',
+              fontSize: 13,
+              color: 'var(--bs-teal)',
+              marginBottom: 6,
+              fontWeight: 500,
+            }}>
+              Task complete ✓
+            </div>
+            <div style={{
+              fontFamily: 'var(--font-ui)',
+              fontSize: 13,
+              color: 'var(--bs-text-secondary)',
+              lineHeight: 1.6,
+            }}>
+              {getTaskImpactMessage(task, profile)}
+            </div>
+          </div>
+
+          <div className={styles.modalBtnRow} style={{ marginTop: 20 }}>
+            <button className={styles.modalSave} onClick={onClose}>Done</button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -312,6 +390,30 @@ function ContentIdeaCard({ profile, initialIdea }) {
                 {idea.format} · {idea.theme}
                 {idea.why && <span className={styles.ideaTooltip}>Why this works: {idea.why}</span>}
               </span>
+              {profile?.c_personality_words?.length > 0 ? (
+                <div style={{
+                  marginTop: 10,
+                  paddingTop: 10,
+                  borderTop: '1px solid rgba(255,255,255,0.04)',
+                  fontFamily: 'var(--font-ui)',
+                  fontSize: 11,
+                  color: 'var(--bs-text-tertiary)',
+                  fontStyle: 'italic',
+                }}>
+                  Tailored to your personality: {profile.c_personality_words.slice(0, 3).join(', ')}
+                </div>
+              ) : (
+                <div style={{
+                  marginTop: 10,
+                  paddingTop: 10,
+                  borderTop: '1px solid rgba(255,255,255,0.04)',
+                  fontFamily: 'var(--font-ui)',
+                  fontSize: 11,
+                  color: 'var(--bs-amber)',
+                }}>
+                  ↑ Complete your Brand Constitution for personalised ideas
+                </div>
+              )}
             </>
           ) : (
             <div className={styles.ideaEmpty}>
@@ -345,7 +447,7 @@ function VoiceCheckCard({ profile, constitutionAnswered, initialUsage, router })
   const [copied, setCopied] = useState(false);
   const [usage, setUsage] = useState(initialUsage);
 
-  const isLocked = constitutionAnswered < 5;
+  const isLocked = constitutionAnswered < 3;
 
   async function checkVoice() {
     if (!inputText.trim() || loading) return;
@@ -407,15 +509,50 @@ function VoiceCheckCard({ profile, constitutionAnswered, initialUsage, router })
           </div>
         )}
 
-        {isLocked ? (
-          <div className={styles.toolLockedState}>
-            <Lock size={24} style={{ color: 'var(--bs-text-tertiary)' }} />
-            <p className={styles.toolLockedText}>Complete your Brand Constitution to unlock voice checking</p>
-            <button className={styles.toolLockedLink} onClick={() => router.push('/constitution')}>
-              Complete Constitution →
+        {isLocked && (
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'rgba(8,8,14,0.7)',
+            backdropFilter: 'blur(2px)',
+            borderRadius: 'var(--radius)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 10,
+            zIndex: 10,
+          }}>
+            <span style={{ fontSize: 24 }}>🔒</span>
+            <div style={{
+              fontFamily: 'var(--font-ui)',
+              fontSize: 13,
+              color: 'var(--bs-text-primary)',
+              textAlign: 'center',
+              maxWidth: 220,
+              lineHeight: 1.5,
+            }}>
+              Complete 3 constitution questions to unlock Voice Check
+            </div>
+            <button
+              onClick={() => router.push('/constitution')}
+              style={{
+                background: 'var(--bs-violet)',
+                color: 'white',
+                border: 'none',
+                borderRadius: 'var(--radius)',
+                padding: '8px 18px',
+                fontFamily: 'var(--font-ui)',
+                fontSize: 12,
+                cursor: 'pointer',
+              }}
+            >
+              Complete now →
             </button>
           </div>
-        ) : result ? (
+        )}
+
+        {result ? (
           <>
             <div className={styles.voiceResultPanels}>
               <div className={`${styles.voicePanel} ${styles.voicePanelOriginal}`}>
@@ -426,6 +563,17 @@ function VoiceCheckCard({ profile, constitutionAnswered, initialUsage, router })
                 <p className={`${styles.voicePanelLabel} ${styles.voicePanelLabelRewritten}`}>BRAND VOICE</p>
                 <p className={`${styles.voicePanelText} ${styles.voicePanelTextRewritten}`}>{result.rewritten}</p>
                 <span className={styles.voiceScoreBadge}>Voice score: {result.voice_score}/10</span>
+                {profile?.c_off_brand_words?.length > 0 && (
+                  <div style={{
+                    marginTop: 8,
+                    fontFamily: 'var(--font-ui)',
+                    fontSize: 11,
+                    color: 'var(--bs-text-tertiary)',
+                    fontStyle: 'italic',
+                  }}>
+                    Avoided: {profile.c_off_brand_words.slice(0, 3).join(', ')}
+                  </div>
+                )}
               </div>
             </div>
             <div className={styles.voiceResultFooter}>
@@ -529,7 +677,20 @@ function TrendFitCard({ profile, initialTrends, trendsGeneratedAt }) {
                 </span>
               </div>
               {expandedIdx === i && trend.reason && (
-                <p className={styles.trendReason}>{trend.reason}</p>
+                <>
+                  <p className={styles.trendReason}>{trend.reason}</p>
+                  {profile?.c_best_customer && (
+                    <div style={{
+                      fontFamily: 'var(--font-ui)',
+                      fontSize: 11,
+                      color: 'var(--bs-text-tertiary)',
+                      fontStyle: 'italic',
+                      marginTop: 4,
+                    }}>
+                      Based on your customer: &ldquo;{profile.c_best_customer.slice(0, 60)}...&rdquo;
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )) : (
@@ -586,12 +747,12 @@ export default function Dashboard() {
     }
   }, [isLoading, profile]);
 
-  // Redirect to roadmap if no roadmap yet — but only if localStorage also has no roadmap
+  // Redirect to results if no roadmap yet — user needs to generate one from there
   useEffect(() => {
     if (!isLoading && profile && !profile.current_roadmap) {
       const localRoadmap = localStorage.getItem('brandshift_roadmap');
       if (!localRoadmap) {
-        router.replace('/roadmap');
+        router.replace('/results');
       }
     }
   }, [profile, isLoading, router]);
@@ -612,7 +773,7 @@ export default function Dashboard() {
   }
 
   function handleModalSave(result) {
-    setModalOpen(false);
+    // Don't close the modal — it switches to the impact-message success view itself
     const task = weekTasks[modalTaskIdx];
     trackEvent('task_completed', {
       brand_name: profile?.brand_name,
@@ -625,7 +786,6 @@ export default function Dashboard() {
       what_happened:    result.what,
       what_differently: result.diff,
     });
-    showToast('Task marked complete 🎉');
   }
 
   function handleGenerateBrief() {
@@ -649,11 +809,15 @@ export default function Dashboard() {
   }
 
   // Tasks for current week
-  const weekTasks = (profile?.tasks || [])
-    .filter(t => t.week === currentWeek)
-    .slice(0, 3);
+  const weekTasksAll = (profile?.tasks || []).filter(t => t.week === currentWeek);
+  const weekTasks = weekTasksAll.slice(0, 3);
   const doneCount  = weekTasks.filter(t => t.status === 'done').length;
   const totalTasks = weekTasks.length;
+
+  // Full-week progress (counts every task assigned to this week, not just visible 3)
+  const weekDone     = weekTasksAll.filter(t => t.status === 'done').length;
+  const weekTotal    = weekTasksAll.length;
+  const weekProgress = weekTotal > 0 ? weekDone / weekTotal : 0;
 
   // Fix 1 — dimension bars use per-dimension scores from latest score_history
   const dimensionConfig = [
@@ -718,8 +882,11 @@ export default function Dashboard() {
           <div style={{ position: 'relative', zIndex: 1 }}>
           {todayTask ? (
             <div className={styles.focusInner}>
+              <span className={styles.focusWeekBg}>W{currentWeek}</span>
               <div className={styles.focusLeft}>
-                <p className={styles.focusSectionLabel}>TODAY'S FOCUS</p>
+                <p className={styles.focusSectionLabel}>
+                  TODAY&apos;S FOCUS · {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}
+                </p>
                 <p className={styles.focusTask}>{todayTask.task}</p>
                 <div className={styles.focusMeta}>
                   <span className={styles.effortBadge} data-effort={todayTask.effort}>
@@ -729,6 +896,46 @@ export default function Dashboard() {
                   </span>
                   <span className={styles.weekTag}>Week {currentWeek} of 8</span>
                 </div>
+
+                {/* Week progress */}
+                {weekTotal > 0 && (
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      marginBottom: 6,
+                    }}>
+                      <span style={{
+                        fontFamily: 'var(--font-ui)',
+                        fontSize: 11,
+                        color: 'var(--bs-text-tertiary)',
+                      }}>
+                        Week {currentWeek} progress
+                      </span>
+                      <span style={{
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: 11,
+                        color: weekProgress === 1 ? 'var(--bs-teal)' : 'var(--bs-text-tertiary)',
+                      }}>
+                        {weekDone}/{weekTotal} tasks
+                      </span>
+                    </div>
+                    <div style={{
+                      height: 4,
+                      background: 'rgba(255,255,255,0.06)',
+                      borderRadius: 2,
+                      overflow: 'hidden',
+                    }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${weekProgress * 100}%`,
+                        background: weekProgress === 1 ? 'var(--bs-teal)' : 'var(--bs-orange)',
+                        borderRadius: 2,
+                        transition: 'width 0.5s ease',
+                      }} />
+                    </div>
+                  </div>
+                )}
               </div>
               <div className={styles.focusRight}>
                 {streak > 0 ? (
@@ -1079,7 +1286,9 @@ export default function Dashboard() {
       {/* ── Exit interview modal ── */}
       {modalOpen && (
         <ExitModal
+          task={profile?.tasks?.[modalTaskIdx]}
           taskText={profile?.tasks?.[modalTaskIdx]?.task}
+          profile={profile}
           onSave={handleModalSave}
           onClose={() => setModalOpen(false)}
         />

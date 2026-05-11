@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase';
+import { getPostLoginDestination } from '@/lib/postLoginRoute';
 
 export async function GET(request) {
   const requestUrl = new URL(request.url);
@@ -97,29 +98,25 @@ export async function GET(request) {
 
         console.log('Brand associated:', recentProfile.brand_name);
 
-        // New user who just got their brand — send to roadmap (no roadmap yet)
-        return NextResponse.redirect(new URL('/roadmap', origin));
-      }
-
-      // New user with no brand at all — go to constitution
-      if (!account.onboarding_completed) {
-        return NextResponse.redirect(new URL('/constitution', origin));
+        // Refresh account in memory to reflect the new primary_brand
+        account.primary_brand = recentProfile.brand_name;
       }
     }
 
-    // Check if this user's brand profile already has a roadmap
-    const brandName = account?.primary_brand;
-    let hasRoadmap = false;
-    if (brandName) {
-      const { data: profile } = await supabaseAdmin
+    // Look up profile (for current_roadmap) if account has a brand
+    let profile = null;
+    if (account?.primary_brand) {
+      const { data: p } = await supabaseAdmin
         .from('brand_profiles')
         .select('current_roadmap')
-        .ilike('brand_name', brandName)
+        .ilike('brand_name', account.primary_brand)
         .single();
-      hasRoadmap = !!profile?.current_roadmap;
+      profile = p;
     }
 
-    return NextResponse.redirect(new URL(hasRoadmap ? '/dashboard' : '/roadmap', origin));
+    const destination = getPostLoginDestination(account, profile);
+    console.log('Post-login destination:', destination);
+    return NextResponse.redirect(new URL(destination, origin));
 
   } catch (err) {
     console.error('Callback error:', err);

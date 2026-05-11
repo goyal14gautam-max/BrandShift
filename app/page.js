@@ -7,6 +7,7 @@ import styles from './page.module.css';
 import { trackPageView, trackEvent } from '@/lib/analytics';
 import { useAuth } from '@/hooks/useAuth';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import { getPostLoginDestination } from '@/lib/postLoginRoute';
 import Logo from '@/components/Logo';
 
 const STEPS = [
@@ -48,13 +49,46 @@ export default function Home() {
   const router = useRouter();
   const { user, isLoading } = useAuth();
 
+  async function handleGoToDashboard() {
+    try {
+      const res = await fetch('/api/auth/account');
+      const { account } = await res.json();
+      if (!account) {
+        router.push('/login');
+        return;
+      }
+      let profile = null;
+      if (account.primary_brand) {
+        const profileRes = await fetch(
+          `/api/profile?brandName=${encodeURIComponent(account.primary_brand)}`
+        );
+        if (profileRes.ok) profile = await profileRes.json();
+      }
+      router.push(getPostLoginDestination(account, profile));
+    } catch {
+      router.push('/login');
+    }
+  }
+
   useEffect(() => {
     trackPageView('landing_page');
     const supabase = createSupabaseBrowserClient();
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
-        const roadmap = localStorage.getItem('brandshift_roadmap');
-        router.replace(roadmap ? '/dashboard' : '/roadmap');
+        try {
+          const res = await fetch('/api/auth/account');
+          const { account } = await res.json();
+          let profile = null;
+          if (account?.primary_brand) {
+            const profileRes = await fetch(
+              `/api/profile?brandName=${encodeURIComponent(account.primary_brand)}`
+            );
+            if (profileRes.ok) profile = await profileRes.json();
+          }
+          router.replace(getPostLoginDestination(account, profile));
+        } catch {
+          router.replace('/dashboard');
+        }
       }
     });
   }, []);
@@ -68,10 +102,7 @@ export default function Home() {
         <div className={styles.navRight}>
           {!isLoading && (
             user ? (
-              <button className={styles.navCta} onClick={() => {
-                const roadmap = typeof window !== 'undefined' ? localStorage.getItem('brandshift_roadmap') : null;
-                router.push(roadmap ? '/dashboard' : '/roadmap');
-              }}>
+              <button className={styles.navCta} onClick={handleGoToDashboard}>
                 Go to Dashboard →
               </button>
             ) : (
@@ -79,6 +110,17 @@ export default function Home() {
                 <button className={styles.navGhost} onClick={() => router.push('/login')}>
                   Sign in
                 </button>
+                <Link
+                  href="/pricing"
+                  style={{
+                    fontFamily: 'var(--font-ui)',
+                    fontSize: 14,
+                    color: 'var(--bs-text-secondary)',
+                    textDecoration: 'none',
+                  }}
+                >
+                  Pricing
+                </Link>
                 <button className={styles.navCta} onClick={() => { trackEvent('cta_clicked', { cta: 'start_free_audit', location: 'nav' }); router.push('/audit'); }}>
                   Start free audit
                 </button>

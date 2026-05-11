@@ -51,6 +51,58 @@ export default function SettingsPage() {
             </div>
           ))}
         </div>
+
+        {/* Upgrade prompt — shown only on free plan */}
+        {(!account?.plan || account?.plan === 'free') && (
+          <div style={{
+            background: 'rgba(124,92,191,0.06)',
+            border: '1px solid rgba(124,92,191,0.2)',
+            borderRadius: 'var(--radius)',
+            padding: '20px 24px',
+            marginTop: 16,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 12,
+          }}>
+            <div>
+              <div style={{
+                fontFamily: 'var(--font-ui)',
+                fontSize: 14,
+                color: 'var(--bs-text-primary)',
+                fontWeight: 500,
+                marginBottom: 4,
+              }}>
+                You&apos;re on the Free plan
+              </div>
+              <div style={{
+                fontFamily: 'var(--font-ui)',
+                fontSize: 13,
+                color: 'var(--bs-text-secondary)',
+              }}>
+                Upgrade to unlock roadmap, dashboard, and all tools
+              </div>
+            </div>
+            <button
+              onClick={() => router.push('/pricing')}
+              style={{
+                background: 'var(--bs-orange)',
+                color: 'white',
+                border: 'none',
+                borderRadius: 'var(--radius)',
+                padding: '10px 24px',
+                fontFamily: 'var(--font-ui)',
+                fontSize: 14,
+                fontWeight: 500,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              View plans →
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Sign out card */}

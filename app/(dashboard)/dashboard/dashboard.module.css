@@ -183,7 +183,7 @@
   background: var(--bs-card-dark);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: var(--radius);
-  padding: 24px;
+  padding: 20px;
 }
 
 .cardHeaderRow {
@@ -206,12 +206,26 @@
 
 /* ── Today's focus ───────────────────────────────────────────── */
 .focusCard {
-  background: var(--bs-card-dark);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-left: 3px solid var(--bs-orange);
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(232, 98, 42, 0.08) 0%, var(--bs-card-dark) 60%);
+  border: 1px solid rgba(232, 98, 42, 0.15);
   border-radius: var(--radius);
-  padding: 24px 28px;
+  padding: 32px 36px;
   margin-bottom: 20px;
+}
+
+.focusWeekBg {
+  position: absolute;
+  right: 32px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--font-mono);
+  font-size: 96px;
+  color: rgba(232, 98, 42, 0.04);
+  pointer-events: none;
+  user-select: none;
+  font-weight: 400;
 }
 
 .focusInner {
@@ -237,11 +251,10 @@
 
 .focusTask {
   font-family: var(--font-ui);
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 500;
   color: var(--bs-text-primary);
   line-height: 1.6;
-  max-width: 600px;
 }
 
 .focusMeta {

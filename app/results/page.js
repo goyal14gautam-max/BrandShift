@@ -168,6 +168,167 @@ function Toast({ visible }) {
   return <div className={`${styles.toast} ${visible ? styles.toastVisible : ''}`}>Copied!</div>;
 }
 
+// ── Evidence Teaser — horizontal scrolling strip below top bar ─────
+function EvidenceTeaser({ scoreData, scrapedData, evidence }) {
+  // Build up to 6 pills in priority order
+  const items = [];
+
+  // 1. Homepage screenshot
+  const homepageShot = scrapedData?.screenshots?.homepage;
+  if (homepageShot) {
+    items.push({
+      kind: 'screenshot',
+      borderColor: 'var(--bs-violet)',
+      source: 'HOMEPAGE',
+      text: 'Your live homepage — captured for analysis',
+    });
+  }
+
+  // 2. First Instagram caption
+  const igRaw = scrapedData?.scraped_instagram || '';
+  if (igRaw) {
+    const postMatch = igRaw.match(/Post \d+:\s*"([^"]+)"/);
+    if (postMatch && postMatch[1]) {
+      items.push({
+        kind: 'instagram',
+        borderColor: 'var(--bs-violet)',
+        source: 'INSTAGRAM',
+        text: postMatch[1],
+      });
+    }
+  }
+
+  // 3. First positive evidence quote
+  const positive = (evidence || []).find(e => e.sentiment === 'positive' && (e.quote || e.observation));
+  if (positive) {
+    items.push({
+      kind: 'positive',
+      borderColor: 'var(--bs-teal)',
+      source: positive.source || 'STRENGTH',
+      text: positive.quote || positive.observation,
+    });
+  }
+
+  // 4. First negative evidence quote
+  const negative = (evidence || []).find(e => e.sentiment === 'negative' && (e.quote || e.observation));
+  if (negative) {
+    items.push({
+      kind: 'negative',
+      borderColor: 'var(--bs-orange)',
+      source: negative.source || 'GAP',
+      text: negative.quote || negative.observation,
+    });
+  }
+
+  // 5. Competitor quote
+  const competitor = (evidence || []).find(e =>
+    (e.source || '').toLowerCase().includes('competitor') && (e.quote || e.observation)
+  );
+  if (competitor) {
+    items.push({
+      kind: 'competitor',
+      borderColor: 'var(--bs-violet)',
+      source: competitor.source || 'COMPETITOR',
+      text: competitor.quote || competitor.observation,
+    });
+  }
+
+  // 6. Brand voice quote (from tone_voice dimension)
+  const voiceQuote = scoreData?.dimensions?.tone_voice?.evidence_quote;
+  if (voiceQuote) {
+    items.push({
+      kind: 'voice',
+      borderColor: 'var(--bs-teal)',
+      source: 'BRAND VOICE',
+      text: voiceQuote,
+    });
+  }
+
+  if (items.length === 0) return null;
+  const display = items.slice(0, 6);
+
+  function scrollToEvidence() {
+    document.getElementById('full-evidence')?.scrollIntoView({ behavior: 'smooth' });
+  }
+
+  return (
+    <div style={{
+      width: '100%',
+      background: 'var(--bs-card-dark)',
+      borderBottom: '1px solid rgba(255,255,255,0.06)',
+      padding: '72px 48px 16px', // 56px nav clearance + 16px breathing room
+    }}>
+      <p style={{
+        fontFamily: 'var(--font-ui)',
+        fontSize: 12,
+        color: 'var(--bs-text-tertiary)',
+        padding: '0 0 8px',
+        margin: 0,
+      }}>
+        Here&apos;s what we found on your brand →
+      </p>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'row',
+          gap: 12,
+          flexWrap: 'nowrap',
+          overflowX: 'auto',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
+        }}
+        className="evidenceTeaserStrip"
+      >
+        <style>{`.evidenceTeaserStrip::-webkit-scrollbar { display: none; }`}</style>
+        {display.map((item, i) => (
+          <div
+            key={i}
+            onClick={scrollToEvidence}
+            style={{
+              background: 'var(--bs-card-light)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderLeft: `3px solid ${item.borderColor}`,
+              borderRadius: 'var(--radius)',
+              padding: '10px 16px',
+              minWidth: 240,
+              maxWidth: 300,
+              flexShrink: 0,
+              cursor: 'pointer',
+              transition: 'transform 0.15s, border-color 0.15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; }}
+          >
+            <p style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 10,
+              letterSpacing: 1,
+              textTransform: 'uppercase',
+              color: 'var(--bs-text-tertiary)',
+              margin: '0 0 6px',
+            }}>
+              {item.source}
+            </p>
+            <p style={{
+              fontFamily: 'var(--font-ui)',
+              fontSize: 12,
+              color: 'var(--bs-text-secondary)',
+              lineHeight: 1.5,
+              margin: 0,
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+            }}>
+              {item.text}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Main page (inner) ──────────────────────────────────────────
 function ResultsInner() {
   const router = useRouter();
@@ -188,6 +349,7 @@ function ResultsInner() {
   const [isGeneratingRoadmap, setIsGeneratingRoadmap] = useState(false);
   const [roadmapStep, setRoadmapStep] = useState(0);
   const [autoGenerating, setAutoGenerating] = useState(false);
+  const [showReturnBanner, setShowReturnBanner] = useState(false);
   const [activeCard, setActiveCard] = useState(0);
   const carouselRef = useRef(null);
   const isDragging = useRef(false);
@@ -212,7 +374,33 @@ function ResultsInner() {
     });
   }, [router]);
 
-  // Auto-generate trigger when returning from login
+  // Auto-trigger return banner + scroll when user comes back signed-in
+  useEffect(() => {
+    if (!user || !scoreData) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const action = params.get('action');
+    let returnData = null;
+    try {
+      returnData = JSON.parse(localStorage.getItem('brandshift_preflight_return') || 'null');
+    } catch {}
+
+    const isRecent = returnData?.savedAt &&
+      Date.now() - returnData.savedAt < 10 * 60 * 1000;
+
+    if (action === 'generate_roadmap' && isRecent) {
+      localStorage.removeItem('brandshift_preflight_return');
+      setShowReturnBanner(true);
+      // Auto-hide banner after 6s
+      setTimeout(() => setShowReturnBanner(false), 6000);
+      // Smooth-scroll to the roadmap CTA section
+      setTimeout(() => {
+        document.getElementById('roadmap-cta')?.scrollIntoView({ behavior: 'smooth' });
+      }, 400);
+    }
+  }, [user, scoreData]);
+
+  // Legacy auto-generate trigger (kept for backward compat with old ?generate=true links)
   useEffect(() => {
     if (shouldGenerate && user && !autoGenerating) {
       setAutoGenerating(true);
@@ -238,8 +426,12 @@ function ResultsInner() {
       location,
     });
     if (!user) {
-      localStorage.setItem('brandshift_pending_roadmap', JSON.stringify({
+      // Save full return context so we can resume on the same page after auth
+      localStorage.setItem('brandshift_preflight_return', JSON.stringify({
+        returnTo: '/results',
+        action: 'generate_roadmap',
         brandName: intakeData?.brandName,
+        savedAt: Date.now(),
       }));
       router.push('/login?redirect=/results&action=generate_roadmap');
       return;
@@ -364,6 +556,26 @@ function ResultsInner() {
         </div>
       )}
 
+      {/* ── Return banner (post-login resume) ── */}
+      {showReturnBanner && (
+        <div style={{
+          position: 'fixed',
+          top: 70,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'var(--bs-violet)',
+          color: 'white',
+          padding: '10px 24px',
+          borderRadius: 'var(--radius)',
+          fontFamily: 'var(--font-ui)',
+          fontSize: 13,
+          zIndex: 100,
+          boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+        }}>
+          Welcome back — you&apos;re signed in. Ready to generate your roadmap ↓
+        </div>
+      )}
+
       {/* ── Fixed top bar ── */}
       <header className={styles.topBar}>
         <Logo size="md" />
@@ -385,6 +597,13 @@ function ResultsInner() {
         </div>
       </header>
 
+      {/* ══ 2 — Evidence Teaser (full-width strip) ══ */}
+      <EvidenceTeaser
+        scoreData={scoreData}
+        scrapedData={scrapedData}
+        evidence={evidence}
+      />
+
       <div className={styles.content}>
 
         {/* ── Message banner ── */}
@@ -401,7 +620,7 @@ function ResultsInner() {
           </div>
         )}
 
-        {/* ══ 1 — Score Hero ══ */}
+        {/* ══ 3 — Score Hero ══ */}
         <div className={styles.heroSection}>
         <section className={styles.heroGrid}>
 
@@ -489,7 +708,7 @@ function ResultsInner() {
         </section>
         </div>
 
-        {/* ══ 2 — Score Simulation + Brand Maturity Path ══ */}
+        {/* ══ 4 — Score Simulation + Brand Maturity Path ══ */}
         <section className={styles.heroTransition}>
 
           {/* Insight card */}
@@ -557,7 +776,7 @@ function ResultsInner() {
           )}
         </section>
 
-        {/* ══ 3 — Radar + Dimensions ══ */}
+        {/* ══ 5 — Radar + Dimensions ══ */}
         <section className={styles.sectionSpaced}>
           <h2 className={styles.sectionTitle}>Where the gaps are</h2>
           <p className={styles.sectionSub}>Your brand scored across 5 dimensions — here's what's driving the number</p>
@@ -775,7 +994,7 @@ function ResultsInner() {
 
         </section>
 
-        {/* ══ 4 — Key Findings ══ */}
+        {/* ══ 6 — Key Findings ══ */}
         <section className={styles.sectionSpaced}>
           <h2 className={styles.sectionTitle}>Key findings</h2>
           <p className={styles.sectionSub}>The single biggest thing working for you — and against you</p>
@@ -826,15 +1045,15 @@ function ResultsInner() {
           </div>
         </section>
 
-        {/* ══ 5 — Evidence ══ */}
-        <section className={styles.sectionSpaced}>
+        {/* ══ 7 — Full Evidence ══ */}
+        <section id="full-evidence" className={styles.sectionSpaced}>
           <h2 className={styles.sectionTitle}>The evidence</h2>
           <p className={styles.sectionSub}>Everything we found, pulled directly from your brand's actual content</p>
           <EvidenceSection scrapedData={scrapedData} evidenceQuotes={evidence} />
         </section>
 
-        {/* ══ 6 — CTA ══ */}
-        <section className={styles.ctaSection}>
+        {/* ══ 8 — CTA ══ */}
+        <section id="roadmap-cta" className={styles.ctaSection}>
           <h2 className={styles.ctaHeading}>Ready to close the gaps?</h2>
           <p className={styles.ctaSub}>Generate a strategic roadmap tailored to your goals</p>
           <button className={styles.ctaBtn} onClick={() => handleRoadmapCta('results_bottom')}>

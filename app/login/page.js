@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff } from 'lucide-react';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import { getPostLoginDestination } from '@/lib/postLoginRoute';
 import Logo from '@/components/Logo';
 import styles from './login.module.css';
 
@@ -62,7 +63,25 @@ function LoginInner() {
     setLoading(true);
     const { error: err } = await supabase.auth.signInWithPassword({ email, password });
     if (err) { setError(friendlyError(err.message)); setLoading(false); return; }
-    window.location.href = '/roadmap';
+
+    // Single source of truth for post-login routing
+    try {
+      const accountRes = await fetch('/api/auth/account');
+      const accountData = await accountRes.json();
+      const account = accountData?.account;
+
+      let profile = null;
+      if (account?.primary_brand) {
+        const profileRes = await fetch(
+          `/api/profile?brandName=${encodeURIComponent(account.primary_brand)}`
+        );
+        if (profileRes.ok) profile = await profileRes.json();
+      }
+
+      window.location.href = getPostLoginDestination(account, profile);
+    } catch {
+      window.location.href = '/dashboard';
+    }
   }
 
   async function handleMagicLink(e) {
