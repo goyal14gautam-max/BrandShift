@@ -38,10 +38,11 @@ No test runner is configured. Manual API testing examples are in `README.md`.
 
 ## Routing rules (post-auth)
 
-- The `/auth/callback` route decides where to send the user after OAuth/email login: `/roadmap` if the brand profile has no `current_roadmap`, otherwise `/dashboard`.
-- The landing page and email-password login also route to `/roadmap` when no roadmap exists.
-- `/dashboard` itself redirects to `/roadmap` if both `profile.current_roadmap` and `localStorage.brandshift_roadmap` are missing.
-- Do not point users at `/dashboard` directly from new entry points without that guard.
+- All callers use `getPostLoginDestination(account, profile)` from `lib/postLoginRoute.js`. Rules: no `account.primary_brand` → `/audit`; has brand but no `current_roadmap` → `/results` (user generates roadmap from there); has both → `/dashboard`.
+- `middleware.js` redirects authenticated users away from `/`, `/login`, and `/signup` straight to `/dashboard` so logged-in users never see the marketing page.
+- `app/page.js` also renders a splash (not the landing UI) the moment it detects an in-flight auth signal: OAuth hash token, PKCE `?code=`, or a live `sb-*-auth-token` cookie. This covers the case where Supabase's OAuth fallback drops the user on `/` instead of `/auth/callback`.
+- `/dashboard` itself redirects to `/results` if both `profile.current_roadmap` and `localStorage.brandshift_roadmap` are missing — keep this guard if you add new entry points.
+- **Supabase Dashboard config**: `https://<domain>/auth/callback` and `http://localhost:3000/auth/callback` must be in Authentication → URL Configuration → Redirect URLs. Without them, OAuth falls back to the Site URL (`/`) and round-trips through the splash unnecessarily.
 
 ## Key files
 

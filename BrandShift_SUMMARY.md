@@ -149,10 +149,24 @@ account.primary_brand + roadmap   → /dashboard
 Callers:
 - [`app/auth/callback/route.js`](app/auth/callback/route.js) — after OAuth/magic-link, claims the most recent unowned `brand_profile` if needed, then calls `getPostLoginDestination` with the freshly-fetched `account` + `profile.current_roadmap`.
 - [`app/login/page.js`](app/login/page.js) — email-password submit fetches `/api/auth/account` + `/api/profile`, calls the helper, redirects.
-- [`app/page.js`](app/page.js) — landing-page "Go to Dashboard" button AND the auto-redirect for already-signed-in visitors both fetch + route via the helper.
+- [`app/page.js`](app/page.js) — landing-page "Go to Dashboard" button uses the helper. The auto-redirect path for already-signed-in visitors now makes a single API call (`/api/auth/account`) and delegates further routing to `/dashboard` (which already redirects to `/results` if there's no roadmap). The earlier two-call version caused a multi-second flash of the landing page.
 - [`app/(dashboard)/dashboard/page.js`](app/(dashboard)/dashboard/page.js) — guard for users with no roadmap routes to `/results` (where they can generate one), not the bare `/roadmap` view.
 
-The middleware in [middleware.js](middleware.js) is unchanged: protects `/dashboard`, `/roadmap`, `/preflight`, `/constitution`, `/outreach`, `/reports`, `/settings`; redirects unauthenticated → `/login?redirect=…`; already-signed-in users hitting `/login`/`/signup` go to `/dashboard`.
+### Landing-page bounce protection (commit `ebd052d`)
+
+Two-layer guard so logged-in users never see the marketing page between login and dashboard:
+
+1. **Server-side** — [middleware.js](middleware.js) now redirects authenticated users from `/` to `/dashboard` (previously only `/login` and `/signup` were redirected). This is the fastest path and runs before any HTML is rendered.
+2. **Client-side splash** — [app/page.js](app/page.js) synchronously detects auth-in-flight signals on first render and shows a logo + spinner instead of the full landing UI:
+   - URL hash containing `access_token`, `refresh_token`, or `error_description` (Supabase implicit-flow fallback)
+   - URL query containing `?code=…` (PKCE callback that mis-landed on `/`)
+   - A live `sb-*-auth-token` cookie (logged-in user with hot cache)
+
+   If `getSession()` later reveals no real session (stale cookies), the splash flips back to the landing page so organic visitors aren't stuck.
+
+**Supabase Dashboard reminder**: `https://<vercel-domain>/auth/callback` and `http://localhost:3000/auth/callback` must be added to Authentication → URL Configuration → Redirect URLs. Without them, OAuth falls back to Site URL (`/`) and round-trips through the splash unnecessarily — the code handles it gracefully but it's wasted work.
+
+Middleware also still protects `/dashboard`, `/roadmap`, `/preflight`, `/constitution`, `/outreach`, `/reports`, `/settings` (redirects unauthenticated → `/login?redirect=…`).
 
 ### Claude usage pattern
 
@@ -478,7 +492,7 @@ All in `app/api/**/route.js`. Default `maxDuration` from [vercel.json](vercel.js
 - LinkedIn OIDC — uses `provider: 'linkedin_oidc'` with `scopes: 'openid profile email'` (requires LinkedIn Developer Console app + Supabase provider configured)
 
 ### Authorization model
-- **Route protection** is enforced by [middleware.js](middleware.js): the matcher excludes `_next` static assets, images, favicon, and `/api`. Protected paths (`/dashboard`, `/roadmap`, `/preflight`, `/constitution`, `/outreach`, `/reports`, `/settings`) redirect unauthenticated traffic to `/login?redirect=…`. The middleware ignores API routes by design — API auth is handled per-route.
+- **Route protection** is enforced by [middleware.js](middleware.js): the matcher excludes `_next` static assets, images, favicon, and `/api`. Protected paths (`/dashboard`, `/roadmap`, `/preflight`, `/constitution`, `/outreach`, `/reports`, `/settings`) redirect unauthenticated traffic to `/login?redirect=…`. Authenticated users hitting `/`, `/login`, or `/signup` are redirected to `/dashboard`. The middleware ignores API routes by design — API auth is handled per-route.
 - **Brand ownership** is enforced server-side via `owner_user_id` checks (when present). The brand-claim flow in `/auth/callback` and `/api/auth/associate-brand` only attaches *unowned* profiles to a user, then writes to `accounts.primary_brand`. The `useDashboard` hook trusts whatever `account.primary_brand` says.
 - **Plan gating** — `useAuth` exposes `isPaid` (`plan in ['starter','agency']`) and `isAgency`. Currently informational; no route hard-gates on plan in code, but the settings page surfaces it.
 
@@ -540,6 +554,16 @@ Inferred from comments, defensive `try/catch` blocks, and code shape — not a c
 - **Section 8** — Built standalone `/pricing` page with 3 plans (Free/Starter/Agency), Razorpay-placeholder CTAs.
 - **Section 9** — Settings page shows a violet "You're on the Free plan" upgrade card with a "View plans →" CTA to `/pricing`.
 - **Section 10** — "Pricing" link added to the landing-page nav between Sign in and Start free audit.
+
+### Auth-flow landing-page flash fix (commit `ebd052d`)
+
+User reported: "as soon as I click on login and choose an account, I'm still being redirected to the landing page and then in a few seconds I'm redirected to the dashboard." Three layered fixes:
+
+1. **[middleware.js](middleware.js)** — Authenticated users hitting `/` are now redirected to `/dashboard` server-side (joined the existing `/login` and `/signup` redirect list). Runs before HTML is rendered, so it's the fastest path.
+2. **[app/page.js](app/page.js)** — Synchronous first-render guard: if the URL has an OAuth hash (`access_token`/`refresh_token`/`error_description`), a PKCE `?code=` query param, or any live `sb-*-auth-token` cookie, the page renders a logo + spinner splash instead of the landing UI. Covers the case where Supabase OAuth falls back to Site URL (`/`) instead of `/auth/callback`. Stale cookies with no real session flip back to the landing page after `getSession()` resolves.
+3. **Single-call post-auth redirect** — The landing-page `useEffect` now makes only `/api/auth/account` (was account + profile) before `window.location.replace('/dashboard')`. The dashboard's own `current_roadmap` guard handles further routing. The previous two-call version was the main cause of the multi-second flash.
+
+**Supabase Dashboard config reminder**: add `https://<vercel-domain>/auth/callback` and `http://localhost:3000/auth/callback` to Authentication → URL Configuration → Redirect URLs. Without them, OAuth falls back to Site URL (`/`) and round-trips through the splash unnecessarily — the code handles it gracefully but it's wasted work.
 
 ### Constitution data wiring (commit `fe52770`, verified end-to-end via Playwright + Supabase)
 
