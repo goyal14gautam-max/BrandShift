@@ -1,11 +1,12 @@
 'use client';
 
 export default function ConstitutionPlant({ answered, total = 20 }) {
+  const pct = total > 0 ? answered / total : 0;
   const stage =
-    answered === 0  ? 'seed' :
-    answered <= 5   ? 'seed' :
-    answered <= 10  ? 'sprout' :
-    answered <= 15  ? 'plant' : 'tree';
+    pct === 0    ? 'seed' :
+    pct <= 0.25  ? 'seed' :
+    pct <= 0.5   ? 'sprout' :
+    pct < 1      ? 'plant' : 'tree';
 
   const color    = '#2EC4A0';
   const dimColor = 'rgba(46,196,160,0.3)';

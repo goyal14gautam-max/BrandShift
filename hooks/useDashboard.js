@@ -129,42 +129,27 @@ export function useDashboard() {
     : null;
 
   const constitutionProgress = (() => {
-    if (!profile) return { answered: 0, total: 20 };
+    if (!profile) return { answered: 0, total: 12 };
 
-    console.log('Constitution fields check:', {
-      brand_personality_words: profile?.brand_personality_words,
-      brand_off_brand_words:   profile?.brand_off_brand_words,
-      brand_best_customer:     profile?.brand_best_customer,
-      brand_5_year_association: profile?.brand_5_year_association,
-      brand_mission:           profile?.brand_mission,
-      brand_origin_story:      profile?.brand_origin_story,
-      brand_refuses_to:        profile?.brand_refuses_to,
-      brand_person_description: profile?.brand_person_description,
-    });
+    // Prefer the c_* columns the wizard writes to; fall back to legacy brand_*
+    // for brands that completed the constitution before the c_* migration.
+    const pick = (cKey, legacyKey) => profile[cKey] ?? profile[legacyKey];
 
     const checks = [
       // Array fields
-      { field: profile.brand_personality_words, isArray: true },
-      { field: profile.brand_off_brand_words,   isArray: true },
-      { field: profile.brand_refuses_to,        isArray: true },
-      { field: profile.brand_owned_phrases,     isArray: true },
-      { field: profile.brand_cringe_phrases,    isArray: true },
+      { field: pick('c_personality_words', 'brand_personality_words'), isArray: true },
+      { field: pick('c_off_brand_words',   'brand_off_brand_words'),   isArray: true },
+      { field: pick('c_refuses_to',        'brand_refuses_to'),        isArray: true },
+      { field: pick('c_owned_phrases',     'brand_owned_phrases'),     isArray: true },
+      { field: pick('c_cringe_phrases',    'brand_cringe_phrases'),    isArray: true },
       // Text fields
-      { field: profile.brand_best_customer,      isArray: false },
-      { field: profile.brand_5_year_association, isArray: false },
-      { field: profile.brand_origin_story,       isArray: false },
-      { field: profile.brand_person_description, isArray: false },
-      { field: profile.brand_mission,            isArray: false },
-      { field: profile.brand_customer_belief,    isArray: false },
-      { field: profile.brand_customer_feeling,   isArray: false },
-      { field: profile.brand_not_for,            isArray: false },
-      { field: profile.brand_10_year_dream,      isArray: false },
-      { field: profile.brand_admired_brand,      isArray: false },
-      { field: profile.brand_competitive_edge,   isArray: false },
-      { field: profile.brand_irreplaceability,   isArray: false },
-      { field: profile.brand_on_brand_example,   isArray: false },
-      { field: profile.brand_off_brand_example,  isArray: false },
-      { field: profile.brand_voice_archetype || profile.brand_3_words, isArray: false },
+      { field: pick('c_best_customer',     'brand_best_customer'),      isArray: false },
+      { field: pick('c_5_year_vision',     'brand_5_year_association'), isArray: false },
+      { field: pick('c_origin_story',      'brand_origin_story'),       isArray: false },
+      { field: pick('c_person_description','brand_person_description'), isArray: false },
+      { field: pick('c_mission',           'brand_mission'),            isArray: false },
+      { field: pick('c_not_for',           'brand_not_for'),            isArray: false },
+      { field: pick('c_competitive_edge',  'brand_competitive_edge'),   isArray: false },
     ];
 
     const answered = checks.filter(check => {
@@ -173,8 +158,6 @@ export function useDashboard() {
       }
       return typeof check.field === 'string' && check.field.trim().length > 3;
     }).length;
-
-    console.log('Constitution progress:', answered, '/', checks.length);
 
     return { answered, total: checks.length };
   })();

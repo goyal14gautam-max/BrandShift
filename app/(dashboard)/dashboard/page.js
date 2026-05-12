@@ -1150,7 +1150,7 @@ export default function Dashboard() {
           <div className={styles.card}>
             <p className={styles.constitTitle}>Brand Constitution</p>
             <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', marginTop: 8 }}>
-              <ConstitutionPlant answered={constitutionProgress.answered} total={20} />
+              <ConstitutionPlant answered={constitutionProgress.answered} total={constitutionProgress.total} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 {constitutionProgress.answered < 5 && (
                   <div className={styles.constitPrompt}>
