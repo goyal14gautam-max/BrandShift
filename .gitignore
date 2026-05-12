@@ -8,3 +8,8 @@ out/
 *.log
 .playwright-mcp/
 /*.png
+
+# Claude Code internal state + the stray Prajna file
+.claude/
+/claude.md
+/CLAUDE.md

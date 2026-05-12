@@ -541,10 +541,22 @@ Inferred from comments, defensive `try/catch` blocks, and code shape — not a c
 - **Section 9** — Settings page shows a violet "You're on the Free plan" upgrade card with a "View plans →" CTA to `/pricing`.
 - **Section 10** — "Pricing" link added to the landing-page nav between Sign in and Start free audit.
 
+### Constitution data wiring (commit `fe52770`, verified end-to-end via Playwright + Supabase)
+
+The new `c_*` constitution columns are now read by every downstream consumer that previously only knew about the legacy `brand_*` columns.
+
+- **Mirror on save** ([app/api/constitution/save/route.js](app/api/constitution/save/route.js)) — every step-save now writes the same answer into both column sets via a `LEGACY_MIRROR` table (`personalityWords → c_personality_words + brand_personality_words`, `bestCustomer → c_best_customer + brand_best_customer`, etc.). Only non-empty values are mirrored.
+- **Backfill on generate** ([app/api/constitution/generate/route.js](app/api/constitution/generate/route.js)) — after the Brand Bible is written, a second `UPDATE` pulls all `c_*` fields and copies them into the matching `brand_*` columns. This catches brands whose constitution was completed before the mirror logic existed.
+- **Scoring uses constitution** ([app/api/score/route.js](app/api/score/route.js), [lib/prompts.js](lib/prompts.js)):
+  - The score route now fetches the brand profile **before** building the prompt and constructs a `constitutionContext` (reads `c_*` first, falls back to `brand_*`; returns `null` if neither has data).
+  - The prompt template gained three new placeholders: `{constitution_block}` (top-of-prompt context), `{constitution_check_voice}` (Brand Voice dimension rubric with `+5/-5/-8` adjustments per personality/cringe/owned-phrase match), and `{constitution_check_audience}` (Audience Alignment `+10/-10` for customer-description match).
+  - The score JSON output schema gained `constitution_impact: { available, dimensions_affected[], key_finding }`.
+- **Results page UI** ([app/results/page.js](app/results/page.js)) — when `scoreData.constitution_impact.available`, a violet "✦ Brand Constitution included in this analysis" pill appears below the urgency/confidence badges. When `key_finding` is present, an amber callout below the pill shows the one-line "⚡ {finding}" message.
+
 ### Real bugs / fragilities
 - **`brand_audits.brand_age` saved but the audit form removed the field** — the field still appears in [lib/supabase.js:97-125](lib/supabase.js#L97-L125) and [app/api/score/route.js](app/api/score/route.js) but isn't collected in [app/audit/page.js](app/audit/page.js) (form has no `brandAge` field). It just gets saved as `undefined`/`null`. Either re-add the field or drop the column from inserts.
 - **Score route uses its own ad-hoc `extractJSON`** ([app/api/score/route.js:41-54](app/api/score/route.js#L41-L54)) instead of the bulletproof one in [lib/claudeClient.js](lib/claudeClient.js). Same for `/api/roadmap` and `/api/monday-brief/generate`. Migrate these to `callClaudeJSON` for consistency.
-- **Constitution data has two parallel column sets** — old (`brand_personality_words`, `brand_mission`, etc.) and new (`c_personality_words`, `c_mission`, etc.). The voice-check / content-idea / trend-fit tools still read the *old* names ([app/api/tools/voice-check/route.js:33-41](app/api/tools/voice-check/route.js#L33-L41)). New constitution wizard writes to the *new* names. Tools will see empty data until either: (a) the tools are updated to read `c_*`, or (b) the new wizard mirrors writes into the old columns.
+- ~~Constitution data has two parallel column sets~~ — **Fixed in commit `fe52770`**: option (b) was chosen. The constitution save route mirrors every answer into both column sets, so voice-check / content-idea / trend-fit tools continue to read the legacy `brand_*` names and now see fresh data. A backfill mirror also runs on bible generation. Long-term, the tools should be migrated to read `c_*` directly so the legacy columns can eventually be dropped.
 - **`lucide-react` v1.7 is missing many icon names.** `Linkedin` doesn't exist — replaced with an inline SVG in `EvidenceSection`. Future imports must `Object.keys(require('lucide-react'))` first or bump the package.
 - **Brand-profile reads use `.single()` on `.ilike()`** — if a user happens to enter two brands with the same name in different casing, Supabase will throw "more than one row returned". Low probability but possible.
 - ~~`app/api/share/list` has no auth gate~~ — **Fixed in Section 7**: route now uses `createServerClient` from `@supabase/ssr` to read the session and filters by `accounts.primary_brand`. Returns `[]` for users with no primary brand instead of 401, so the empty state renders cleanly.
