@@ -53,6 +53,88 @@ function extractJSON(text) {
   return null;
 }
 
+// Build a constitution context from a brand profile (reads c_* first, falls
+// back to legacy brand_* columns). Returns null if no constitution data exists.
+function buildConstitutionContext(profile) {
+  if (!profile) return null;
+
+  const pick = (cKey, legacyKey, fallback = '') =>
+    profile[cKey] ?? profile[legacyKey] ?? fallback;
+
+  const pickArr = (cKey, legacyKey) => {
+    const cVal = profile[cKey];
+    if (Array.isArray(cVal) && cVal.length > 0) return cVal;
+    const lVal = profile[legacyKey];
+    if (Array.isArray(lVal) && lVal.length > 0) return lVal;
+    return [];
+  };
+
+  const personalityWords = pickArr('c_personality_words', 'brand_personality_words');
+  const offBrandWords    = pickArr('c_off_brand_words', 'brand_off_brand_words');
+  const refusesTo        = pickArr('c_refuses_to', 'brand_refuses_to');
+  const ownedPhrases     = pickArr('c_owned_phrases', 'brand_owned_phrases');
+  const cringePhrases    = pickArr('c_cringe_phrases', 'brand_cringe_phrases');
+
+  const hasAny =
+    personalityWords.length > 0 || offBrandWords.length > 0 ||
+    !!pick('c_best_customer', 'brand_best_customer') ||
+    !!pick('c_mission', 'brand_mission');
+
+  if (!hasAny) return null;
+
+  return {
+    personalityWords: personalityWords.join(', ') || 'Not defined',
+    offBrandWords:    offBrandWords.join(', ')    || 'Not defined',
+    bestCustomer:     pick('c_best_customer', 'brand_best_customer', 'Not defined'),
+    refusesTo:        refusesTo.join(', ')        || 'Not defined',
+    competitiveEdge:  pick('c_competitive_edge', 'brand_competitive_edge', 'Not defined'),
+    mission:          pick('c_mission', 'brand_mission', 'Not defined'),
+    ownedPhrases:     ownedPhrases.join(', ')     || 'None defined',
+    cringePhrases:    cringePhrases.join(', ')    || 'None defined',
+  };
+}
+
+function buildConstitutionPromptBlock(ctx) {
+  if (!ctx) return 'BRAND CONSTITUTION: Not completed yet';
+  return `BRAND CONSTITUTION DATA:
+This brand has completed their Brand Constitution. Use this to inform your scoring — especially Brand Voice, Audience Alignment, and Competitor Positioning dimensions.
+
+Personality words: ${ctx.personalityWords}
+Words they refuse to be: ${ctx.offBrandWords}
+Their best customer: ${ctx.bestCustomer}
+What they refuse to do: ${ctx.refusesTo}
+Their competitive edge: ${ctx.competitiveEdge}
+Brand mission: ${ctx.mission}
+Owned phrases: ${ctx.ownedPhrases}
+Cringe phrases: ${ctx.cringePhrases}`;
+}
+
+function buildVoiceCheck(ctx) {
+  if (!ctx) return 'CONSTITUTION CHECK FOR BRAND VOICE: No constitution data available.';
+  return `CONSTITUTION CHECK FOR BRAND VOICE:
+Personality words defined: ${ctx.personalityWords}
+Check scraped content for these words or their synonyms.
+  +5 if found in Instagram captions or website copy.
+  -5 if NOT found anywhere (brand says one thing and communicates another).
+
+Cringe phrases to avoid: ${ctx.cringePhrases}
+  -8 if any cringe phrase appears in scraped content. Quote the specific phrase found.
+
+Owned phrases: ${ctx.ownedPhrases}
+  +5 if any owned phrase appears in scraped content.`;
+}
+
+function buildAudienceCheck(ctx) {
+  if (!ctx) return 'CONSTITUTION CHECK FOR AUDIENCE: No constitution data available.';
+  return `CONSTITUTION CHECK FOR AUDIENCE:
+Brand's described best customer: "${ctx.bestCustomer}"
+
+Compare this description to what the scraped content actually targets.
+  +10 strong match (same life stage, values, language).
+  No adjustment for partial match.
+  -10 mismatch — targeting different person than described. Flag this explicitly in the justification.`;
+}
+
 export async function POST(request) {
   try {
   const body = await request.json();
@@ -62,6 +144,17 @@ export async function POST(request) {
     scraped_linkedin,
     comp1Name, scraped_comp1, comp2Name, scraped_comp2,
   } = body;
+
+  // Fetch existing profile to pull constitution data (if any)
+  let existingProfile = null;
+  try {
+    existingProfile = await getBrandProfile(brandName);
+  } catch (err) {
+    console.log('Pre-score profile fetch failed (will continue without constitution data):', err.message);
+  }
+
+  const constitutionContext = buildConstitutionContext(existingProfile);
+  console.log('Constitution context:', constitutionContext ? 'available' : 'not available');
 
   const filledPrompt = fillPrompt(SCORING_USER_PROMPT, {
     brand_name: brandName,
@@ -78,6 +171,9 @@ export async function POST(request) {
     scraped_comp1: scraped_comp1 || 'No data',
     comp2_name:  comp2Name  || 'Competitor 2',
     scraped_comp2: scraped_comp2 || 'No data',
+    constitution_block:        buildConstitutionPromptBlock(constitutionContext),
+    constitution_check_voice:    buildVoiceCheck(constitutionContext),
+    constitution_check_audience: buildAudienceCheck(constitutionContext),
   });
 
   let text = await callClaudeForScore(filledPrompt);
@@ -108,7 +204,7 @@ export async function POST(request) {
 
   let brandProfileId = null;
   try {
-    const existing = await getBrandProfile(brandName);
+    const existing = existingProfile || await getBrandProfile(brandName);
     if (!existing) {
       brandProfileId = await createBrandProfile({
         brandName,

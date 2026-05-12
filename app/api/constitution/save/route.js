@@ -16,6 +16,21 @@ const FIELD_MAP = {
   mission:           'c_mission',
 };
 
+// Mirror new c_* answer keys to the legacy brand_* columns that the scoring
+// route, voice-check, content-idea, and trend-fit tools still read.
+const LEGACY_MIRROR = {
+  personalityWords:  'brand_personality_words',
+  offBrandWords:     'brand_off_brand_words',
+  bestCustomer:      'brand_best_customer',
+  refusesTo:         'brand_refuses_to',
+  personDescription: 'brand_person_description',
+  mission:           'brand_mission',
+  ownedPhrases:      'brand_owned_phrases',
+  cringePhrases:     'brand_cringe_phrases',
+  originStory:       'brand_origin_story',
+  fiveYearVision:    'brand_5_year_association',
+};
+
 export async function POST(request) {
   try {
     const { brandName, step, answers } = await request.json();
@@ -37,6 +52,18 @@ export async function POST(request) {
     Object.entries(FIELD_MAP).forEach(([formKey, dbKey]) => {
       if (answers[formKey] !== undefined) {
         updateData[dbKey] = answers[formKey];
+      }
+    });
+
+    // Mirror non-empty answers to the legacy brand_* columns
+    Object.entries(LEGACY_MIRROR).forEach(([formKey, legacyKey]) => {
+      const val = answers[formKey];
+      if (val === undefined) return;
+      const hasValue = Array.isArray(val)
+        ? val.length > 0
+        : typeof val === 'string' && val.trim().length > 0;
+      if (hasValue) {
+        updateData[legacyKey] = val;
       }
     });
 

@@ -91,6 +91,51 @@ No markdown, no JSON, no formatting. Just clean readable text.`;
       })
       .ilike('brand_name', brandName);
 
+    // Mirror c_* columns to legacy brand_* columns so scoring + tools see the data
+    try {
+      const { data: fullProfile } = await supabaseAdmin
+        .from('brand_profiles')
+        .select(`
+          c_personality_words,
+          c_off_brand_words,
+          c_best_customer,
+          c_refuses_to,
+          c_person_description,
+          c_mission,
+          c_owned_phrases,
+          c_cringe_phrases,
+          c_origin_story,
+          c_5_year_vision,
+          c_competitive_edge
+        `)
+        .ilike('brand_name', brandName)
+        .single();
+
+      if (fullProfile) {
+        const mirror = {};
+        if (fullProfile.c_personality_words?.length) mirror.brand_personality_words = fullProfile.c_personality_words;
+        if (fullProfile.c_off_brand_words?.length)   mirror.brand_off_brand_words = fullProfile.c_off_brand_words;
+        if (fullProfile.c_best_customer)             mirror.brand_best_customer = fullProfile.c_best_customer;
+        if (fullProfile.c_refuses_to?.length)        mirror.brand_refuses_to = fullProfile.c_refuses_to;
+        if (fullProfile.c_person_description)        mirror.brand_person_description = fullProfile.c_person_description;
+        if (fullProfile.c_mission)                   mirror.brand_mission = fullProfile.c_mission;
+        if (fullProfile.c_owned_phrases?.length)     mirror.brand_owned_phrases = fullProfile.c_owned_phrases;
+        if (fullProfile.c_cringe_phrases?.length)    mirror.brand_cringe_phrases = fullProfile.c_cringe_phrases;
+        if (fullProfile.c_origin_story)              mirror.brand_origin_story = fullProfile.c_origin_story;
+        if (fullProfile.c_5_year_vision)             mirror.brand_5_year_association = fullProfile.c_5_year_vision;
+
+        if (Object.keys(mirror).length > 0) {
+          await supabaseAdmin
+            .from('brand_profiles')
+            .update(mirror)
+            .ilike('brand_name', brandName);
+          console.log('Legacy columns synced after constitution generation:', Object.keys(mirror));
+        }
+      }
+    } catch (mirrorErr) {
+      console.error('Legacy mirror failed (non-fatal):', mirrorErr.message);
+    }
+
     return NextResponse.json({ success: true, bibleContent });
   } catch (err) {
     console.error('Generate error:', err);

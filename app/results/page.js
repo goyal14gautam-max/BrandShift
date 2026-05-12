@@ -642,6 +642,42 @@ function ResultsInner() {
                 </span>
               )}
             </div>
+
+            {/* Constitution-included indicator */}
+            {scoreData.constitution_impact?.available && (
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                background: 'rgba(124,92,191,0.1)',
+                border: '1px solid rgba(124,92,191,0.2)',
+                borderRadius: 100,
+                padding: '4px 12px',
+                fontFamily: 'var(--font-ui)',
+                fontSize: 11,
+                color: 'var(--bs-violet)',
+                marginTop: 10,
+              }}>
+                ✦ Brand Constitution included in this analysis
+              </div>
+            )}
+
+            {/* Constitution key finding */}
+            {scoreData.constitution_impact?.key_finding && (
+              <div style={{
+                fontFamily: 'var(--font-ui)',
+                fontSize: 13,
+                color: 'var(--bs-amber)',
+                lineHeight: 1.6,
+                marginTop: 12,
+                padding: '10px 14px',
+                background: 'rgba(232,160,48,0.06)',
+                border: '1px solid rgba(232,160,48,0.15)',
+                borderRadius: 'var(--radius)',
+              }}>
+                ⚡ {scoreData.constitution_impact.key_finding}
+              </div>
+            )}
           </div>
 
           {/* Right: 2×2 metric cards */}
