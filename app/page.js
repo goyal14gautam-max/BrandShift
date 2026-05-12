@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import styles from './page.module.css';
@@ -49,6 +49,20 @@ export default function Home() {
   const router = useRouter();
   const { user, isLoading } = useAuth();
 
+  // Detect auth-in-progress synchronously so we never flash landing UI:
+  //   - URL hash like #access_token=... (Supabase implicit-flow fallback)
+  //   - URL query like ?code=... (PKCE callback that landed here by mistake)
+  //   - Active session cookies (logged-in user hitting `/`)
+  const [authInFlight, setAuthInFlight] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const hash = window.location.hash || '';
+    const search = window.location.search || '';
+    if (/access_token|refresh_token|error_description/.test(hash)) return true;
+    if (/[?&]code=/.test(search)) return true;
+    if (document.cookie.split('; ').some(c => c.startsWith('sb-') && c.includes('-auth-token'))) return true;
+    return false;
+  });
+
   async function handleGoToDashboard() {
     try {
       const res = await fetch('/api/auth/account');
@@ -74,24 +88,51 @@ export default function Home() {
     trackPageView('landing_page');
     const supabase = createSupabaseBrowserClient();
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        try {
-          const res = await fetch('/api/auth/account');
-          const { account } = await res.json();
-          let profile = null;
-          if (account?.primary_brand) {
-            const profileRes = await fetch(
-              `/api/profile?brandName=${encodeURIComponent(account.primary_brand)}`
-            );
-            if (profileRes.ok) profile = await profileRes.json();
-          }
-          router.replace(getPostLoginDestination(account, profile));
-        } catch {
-          router.replace('/dashboard');
+      if (!session?.user) {
+        // Stale cookies or no session — show the landing page after all.
+        setAuthInFlight(false);
+        return;
+      }
+      // Authenticated — route fast. Let /dashboard handle further routing
+      // (it already redirects to /results if there's no roadmap).
+      try {
+        const res = await fetch('/api/auth/account');
+        const { account } = res.ok ? await res.json() : { account: null };
+        if (!account?.primary_brand) {
+          window.location.replace('/audit');
+          return;
         }
+        window.location.replace('/dashboard');
+      } catch {
+        window.location.replace('/dashboard');
       }
     });
   }, []);
+
+  // Never render the landing UI when an auth flow is in-flight or the user
+  // is already signed in — show a minimal splash instead.
+  if (authInFlight || user) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--bs-bg-dark, #0a0a0a)',
+        flexDirection: 'column',
+        gap: 16,
+      }}>
+        <Logo size="md" />
+        <div style={{
+          width: 28, height: 28, borderRadius: '50%',
+          border: '2px solid rgba(255,255,255,0.15)',
+          borderTopColor: 'var(--bs-orange, #e8622a)',
+          animation: 'spin 0.8s linear infinite',
+        }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.page}>
