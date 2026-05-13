@@ -1,12 +1,36 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+async function getAuthedUser() {
+  const cookieStore = cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    {
+      cookies: {
+        get(name) { return cookieStore.get(name)?.value; },
+        set(name, value, options) { cookieStore.set({ name, value, ...options }); },
+        remove(name, options) { cookieStore.set({ name, value: '', ...options }); },
+      },
+    }
+  );
+  const { data: { user } } = await supabase.auth.getUser();
+  return user;
+}
 
 export async function POST(request) {
   try {
     const { brandName } = await request.json();
+
+    const user = await getAuthedUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
 
     const { data: profile, error } = await supabaseAdmin
       .from('brand_profiles')
@@ -16,6 +40,13 @@ export async function POST(request) {
 
     if (error || !profile) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
+    }
+
+    if (profile.owner_user_id && profile.owner_user_id !== user.id) {
+      return NextResponse.json(
+        { error: 'forbidden', message: 'This brand belongs to a different account.' },
+        { status: 403 }
+      );
     }
 
     const prompt = `You are writing a Brand Bible for ${brandName}.

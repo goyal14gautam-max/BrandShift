@@ -1,5 +1,51 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+
+async function getAuthedUser() {
+  const cookieStore = cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    {
+      cookies: {
+        get(name) { return cookieStore.get(name)?.value; },
+        set(name, value, options) { cookieStore.set({ name, value, ...options }); },
+        remove(name, options) { cookieStore.set({ name, value: '', ...options }); },
+      },
+    }
+  );
+  const { data: { user } } = await supabase.auth.getUser();
+  return user;
+}
+
+// Ensure the authenticated user is allowed to read/write the brand row.
+// Returns the resolved row id on success, or a NextResponse error.
+async function authorizeBrand(brandName, userId) {
+  const { data: row, error } = await supabaseAdmin
+    .from('brand_profiles')
+    .select('id, owner_user_id')
+    .ilike('brand_name', brandName)
+    .maybeSingle();
+
+  if (error) {
+    return { error: NextResponse.json({ error: error.message }, { status: 500 }) };
+  }
+  if (!row) {
+    return { error: NextResponse.json({ error: 'Profile not found: ' + brandName }, { status: 404 }) };
+  }
+  // Unowned rows (created via pre-auth audit) can be claimed by the current user.
+  if (row.owner_user_id && row.owner_user_id !== userId) {
+    return {
+      error: NextResponse.json(
+        { error: 'forbidden', message: 'This brand belongs to a different account.' },
+        { status: 403 }
+      ),
+    };
+  }
+  return { row };
+}
 
 const FIELD_MAP = {
   personalityWords:  'c_personality_words',
@@ -44,10 +90,24 @@ export async function POST(request) {
       return NextResponse.json({ error: 'No brand name provided' }, { status: 400 });
     }
 
+    const user = await getAuthedUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+
+    const auth = await authorizeBrand(brandName, user.id);
+    if (auth.error) return auth.error;
+
     const updateData = {
       c_current_step: step,
       updated_at: new Date().toISOString(),
     };
+
+    // If this row was created unowned (pre-auth audit), claim it for the
+    // current user so future ownership checks pass.
+    if (!auth.row.owner_user_id) {
+      updateData.owner_user_id = user.id;
+    }
 
     Object.entries(FIELD_MAP).forEach(([formKey, dbKey]) => {
       if (answers[formKey] !== undefined) {

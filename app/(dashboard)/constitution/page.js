@@ -78,15 +78,36 @@ export default function ConstitutionPage() {
     refusesTo: [], competitiveEdge: '', mission: '',
   });
 
-  // Resolve brand name
+  // Resolve brand name — MUST match the dashboard's source of truth
+  // (account.primary_brand). If we read from localStorage first, the wizard
+  // can write to a different brand than the dashboard reads from (e.g. user
+  // had FieldAssist cached in localStorage from an earlier audit but their
+  // account's primary_brand is Myntra). Falls back to localStorage only when
+  // the account has no primary_brand yet (new-user edge case).
   useEffect(() => {
-    try {
-      const brand = JSON.parse(localStorage.getItem('brandshift_brand') || '{}');
-      const name = brand.brandName || localStorage.getItem('brandshift_active_brand') || '';
-      setBrandName(name);
-    } catch {
-      setBrandName('');
-    }
+    (async () => {
+      try {
+        const res = await fetch('/api/auth/account');
+        if (res.ok) {
+          const data = await res.json();
+          const primary = data?.account?.primary_brand;
+          if (primary) {
+            setBrandName(primary);
+            try { localStorage.setItem('brandshift_active_brand', primary); } catch {}
+            return;
+          }
+        }
+      } catch {
+        // fall through to localStorage
+      }
+      try {
+        const brand = JSON.parse(localStorage.getItem('brandshift_brand') || '{}');
+        const name = brand.brandName || localStorage.getItem('brandshift_active_brand') || '';
+        setBrandName(name);
+      } catch {
+        setBrandName('');
+      }
+    })();
   }, []);
 
   // Load existing answers
@@ -154,7 +175,16 @@ export default function ConstitutionPage() {
       console.log('Save result:', result);
 
       if (!res.ok || !result.success) {
-        setSaveError(result.error || 'Save failed');
+        if (res.status === 403) {
+          setSaveError(
+            result.message ||
+              'This brand belongs to a different account. Sign in to that account or start a new audit.'
+          );
+        } else if (res.status === 401) {
+          setSaveError('Your session expired. Please sign in again.');
+        } else {
+          setSaveError(result.error || 'Save failed');
+        }
         return false;
       }
       return true;
