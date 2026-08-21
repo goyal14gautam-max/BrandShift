@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { callClaude } from '@/lib/claudeClient';
+
+export const maxDuration = 90;
 import { ROADMAP_PROMPT } from '@/lib/prompts';
 import { updateBrandProfile } from '@/lib/supabase';
 import { flattenRoadmapToTasks } from '@/lib/helpers';

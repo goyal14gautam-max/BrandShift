@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { callClaude } from '@/lib/claudeClient';
 
-export const maxDuration = 60;
+export const maxDuration = 150;
 import { SCORING_SYSTEM_PROMPT, SCORING_USER_PROMPT } from '@/lib/prompts';
 import { saveAudit, getBrandProfile, createBrandProfile, saveScoreToHistory } from '@/lib/supabase';
 
@@ -12,7 +12,7 @@ function fillPrompt(template, data) {
 async function callClaudeForScore(prompt) {
   const response = await callClaude({
     model: 'claude-sonnet-5',
-    max_tokens: 3000,
+    max_tokens: 6000,
     thinking: { type: 'disabled' },
     system: SCORING_SYSTEM_PROMPT,
     messages: [{ role: 'user', content: prompt }],
