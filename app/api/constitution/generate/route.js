@@ -94,7 +94,7 @@ No markdown, no JSON, no formatting. Just clean readable text.`;
         console.log(`Bible generation attempt ${attempts}`);
 
         const response = await anthropic.messages.create({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-5',
           max_tokens: 1500,
           temperature: 0.7,
           messages: [{ role: 'user', content: prompt }],

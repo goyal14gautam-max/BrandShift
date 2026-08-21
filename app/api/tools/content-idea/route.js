@@ -52,7 +52,7 @@ Return ONLY this JSON, no other text:
 }`;
 
     const response = await callClaude({
-      model: 'claude-sonnet-4-0',
+      model: 'claude-sonnet-5',
       max_tokens: 500,
       messages: [{ role: 'user', content: prompt }],
     });

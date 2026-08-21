@@ -43,7 +43,7 @@ From [package.json](package.json):
 - Supabase Postgres + Auth via `@supabase/supabase-js` (admin) and `@supabase/ssr` (cookie-bound server + browser clients)
 
 **AI**
-- Anthropic Claude (`@anthropic-ai/sdk` v0.80), model id `claude-sonnet-4-0` everywhere
+- Anthropic Claude (`@anthropic-ai/sdk` v0.80), model id `claude-sonnet-5` everywhere
 - All Claude traffic flows through [lib/claudeClient.js](lib/claudeClient.js) which adds 3× retry on 429/529 and a `extractJSON` helper for parsing markdown-fenced / dirty JSON
 
 **Scraping**

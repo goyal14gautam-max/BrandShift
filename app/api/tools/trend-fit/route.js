@@ -66,7 +66,7 @@ Return ONLY this JSON, no other text:
 fit must be exactly one of: "use", "avoid", "test"`;
 
     const response = await callClaude({
-      model: 'claude-sonnet-4-0',
+      model: 'claude-sonnet-5',
       max_tokens: 600,
       messages: [{ role: 'user', content: prompt }],
     });

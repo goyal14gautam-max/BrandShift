@@ -11,7 +11,7 @@ function fillPrompt(template, data) {
 
 async function callClaudeForScore(prompt) {
   const response = await callClaude({
-    model: 'claude-sonnet-4-0',
+    model: 'claude-sonnet-5',
     max_tokens: 3000,
     temperature: 0.3,
     system: SCORING_SYSTEM_PROMPT,
@@ -256,7 +256,7 @@ Return ONLY this JSON, no other text:
 }`;
 
       const compRes = await callClaude({
-        model: 'claude-sonnet-4-0',
+        model: 'claude-sonnet-5',
         max_tokens: 300,
         messages: [{ role: 'user', content: competitorPrompt }],
       });

@@ -212,7 +212,7 @@ async function extractInstagramSignals(captions) {
   if (!captions || captions.length < 50) return '';
   try {
     const response = await callClaude({
-      model: 'claude-sonnet-4-0',
+      model: 'claude-sonnet-5',
       max_tokens: 600,
       messages: [{
         role: 'user',

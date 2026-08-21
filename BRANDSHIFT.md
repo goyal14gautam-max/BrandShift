@@ -21,7 +21,7 @@ No test runner is configured. Manual API testing examples are in `README.md`.
 
 - **Next.js 14 App Router** — JavaScript (not TypeScript), CSS Modules (no Tailwind)
 - **Supabase** — Postgres + Auth + SSR cookies. Single project on `fgujotnczwejuortvxne.supabase.co`
-- **Anthropic Claude** — `claude-sonnet-4-0` for scoring and roadmap, via `@anthropic-ai/sdk`
+- **Anthropic Claude** — `claude-sonnet-5` for scoring and roadmap, via `@anthropic-ai/sdk`
 - **Firecrawl** (`@mendable/firecrawl-js`) — website/blog scraping
 - **Apify REST API** — Instagram (`apify~instagram-profile-scraper`) and LinkedIn company pages (`curious_coder~linkedin-company-profile-scraper`)
 - **Recharts** — score history charts; **Lucide-react** — icons (note: `Linkedin` icon is missing in v1.7 — use the inline SVG in `EvidenceSection.js`)
@@ -77,7 +77,7 @@ The `brand_profiles` row holds essentially everything per brand: latest score, `
 - **`useDashboard.constitutionProgress`** counts answered fields by checking text length >3 chars and array length >0. Don't change the threshold without checking the empty-state plant stage in `components/ConstitutionPlant.js`.
 - **Scrape timeouts**: homepage 15s, about/blog/competitors 10s, Instagram 50s, LinkedIn 15s. Increasing any of these on Vercel free tier risks hitting the 300s `maxDuration`.
 - **Apify polling**: both Instagram and LinkedIn scrapers start a run, then poll `actor-runs/{id}` every 4-5s for up to 8-12 attempts. LinkedIn falls back to Firecrawl on `/about` page if Apify fails.
-- **The Anthropic model id is `claude-sonnet-4-0`** — that is the literal string the SDK accepts in this codebase, not a placeholder. Do not "fix" it to a dated id without confirming.
+- **The Anthropic model id is `claude-sonnet-5`** (migrated 2026-08-21 from the retired `claude-sonnet-4-0` alias, which started 404ing on `/api/score` and every other Claude call site). Do not change it again without confirming — it's a live SDK model string, not a placeholder.
 
 ## What not to do
 

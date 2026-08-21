@@ -133,5 +133,5 @@ Expected: JSON with `two_months`, `six_months`, `one_year`, `bigger_picture`.
 - **CSS Modules** (no Tailwind)
 - **Firecrawl** (`@mendable/firecrawl-js`) — website scraping
 - **Apify** — Instagram scraping
-- **Anthropic Claude** (`claude-sonnet-4-0`) — AI scoring and roadmap
+- **Anthropic Claude** (`claude-sonnet-5`) — AI scoring and roadmap
 - **Vercel** — deployment
