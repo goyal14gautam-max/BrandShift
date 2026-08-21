@@ -12,7 +12,6 @@ async function callClaudeForRoadmap(prompt) {
   const response = await callClaude({
     model: 'claude-sonnet-5',
     max_tokens: 3000,
-    temperature: 0.3,
     messages: [{ role: 'user', content: prompt }],
   });
   return response.content.find(b => b.type === 'text')?.text || '';

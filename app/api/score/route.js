@@ -13,7 +13,6 @@ async function callClaudeForScore(prompt) {
   const response = await callClaude({
     model: 'claude-sonnet-5',
     max_tokens: 3000,
-    temperature: 0.3,
     system: SCORING_SYSTEM_PROMPT,
     messages: [{ role: 'user', content: prompt }],
   });
