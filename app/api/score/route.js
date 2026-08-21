@@ -13,6 +13,7 @@ async function callClaudeForScore(prompt) {
   const response = await callClaude({
     model: 'claude-sonnet-5',
     max_tokens: 3000,
+    thinking: { type: 'disabled' },
     system: SCORING_SYSTEM_PROMPT,
     messages: [{ role: 'user', content: prompt }],
   });
@@ -257,6 +258,7 @@ Return ONLY this JSON, no other text:
       const compRes = await callClaude({
         model: 'claude-sonnet-5',
         max_tokens: 300,
+        thinking: { type: 'disabled' },
         messages: [{ role: 'user', content: competitorPrompt }],
       });
       const compText = compRes.content.find(b => b.type === 'text')?.text || '';

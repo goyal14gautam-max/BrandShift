@@ -37,6 +37,7 @@ export async function POST(request) {
     const response = await callClaude({
       model:      'claude-sonnet-5',
       max_tokens: 1000,
+      thinking:   { type: 'disabled' },
       system:     MONDAY_BRIEF_SYSTEM_PROMPT,
       messages:   [{ role: 'user', content: briefPrompt }],
     });

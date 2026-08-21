@@ -64,6 +64,7 @@ Return ONLY this JSON, no other text:
     const response = await callClaude({
       model: 'claude-sonnet-5',
       max_tokens: 400,
+      thinking: { type: 'disabled' },
       messages: [{ role: 'user', content: prompt }],
     });
 

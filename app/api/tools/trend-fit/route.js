@@ -68,6 +68,7 @@ fit must be exactly one of: "use", "avoid", "test"`;
     const response = await callClaude({
       model: 'claude-sonnet-5',
       max_tokens: 600,
+      thinking: { type: 'disabled' },
       messages: [{ role: 'user', content: prompt }],
     });
 

@@ -8,6 +8,7 @@ export async function POST(request) {
     const response = await callClaude({
       model: 'claude-sonnet-5',
       max_tokens: 600,
+      thinking: { type: 'disabled' },
       system: `You are writing a cold outreach email for BrandShift, an AI brand analysis tool. The email should feel personal, specific, and non-salesy. It should show genuine insight about the brand. Never use generic phrases like "I hope this email finds you well". Be direct and specific. Keep it under 150 words.`,
       messages: [{
         role: 'user',
