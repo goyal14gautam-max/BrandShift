@@ -9,6 +9,7 @@ const PROTECTED_ROUTES = [
   '/outreach',
   '/reports',
   '/settings',
+  '/leads',
 ];
 
 export async function middleware(request) {

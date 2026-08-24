@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useDashboard } from '@/hooks/useDashboard';
 import {
   LayoutDashboard, Map, FileText,
-  BookOpen, Settings, LogOut, Rocket,
+  BookOpen, Settings, LogOut, Rocket, Users,
 } from 'lucide-react';
 import Logo from '@/components/Logo';
 import styles from './Sidebar.module.css';
@@ -16,6 +16,7 @@ const NAV_ITEMS = [
   { icon: Map,             label: 'Roadmap',      href: '/roadmap'       },
   { icon: Rocket,          label: 'Pre-Flight',   href: '/preflight'     },
   { icon: FileText,        label: 'Reports',      href: '/reports'       },
+  { icon: Users,           label: 'Leads',        href: '/leads'         },
   { icon: BookOpen,        label: 'Constitution', href: '/constitution'  },
   { icon: Settings,        label: 'Settings',     href: '/settings'      },
 ];
